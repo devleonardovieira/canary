@@ -1,9 +1,9 @@
 -- Core settings
 -- Note: If you want to use datapack folder canary (custom), put only "data-canary"
--- If you want to use the global datapack folder, put "data-otservbr-global"
+-- If you want to use the global datapack folder, put "data-canary"
 -- If "useAnyDatapackFolder" is set to true then you can choose any datapack folder for your server
 useAnyDatapackFolder = false
-dataPackDirectory = "data-otservbr-global"
+dataPackDirectory = "data-canary"
 -- Don't change this unless you know what you're doing
 coreDirectory = "data"
 
@@ -64,8 +64,8 @@ loginProtocolPort = 7171
 gameProtocolPort = 7172
 statusProtocolPort = 7171
 maxPlayers = 0
-serverName = "OTServBR-Global"
-serverMotd = "Welcome to the OTServBR-Global!"
+serverName = "Shin Online"
+serverMotd = "Welcome to the Shin Online"
 statusTimeout = 5 * 1000
 replaceKickOnLogin = true
 maxPacketsPerSecond = 25
@@ -310,7 +310,7 @@ teleportSummons = false
 -- NOTE: true will allow the /reload command to be used
 -- NOTE: Using this script might cause unwanted changes
 -- This script forces a reload in the entire server, this means that everything that is stored in memory might stop to work properly and/or completely, this script should be used in test environments only
-allowReload = false
+allowReload = true
 
 -- Stamina in Trainers
 staminaTrainer = false
@@ -397,8 +397,8 @@ pushWhenAttacking = false
 -- Note: If a map with the same name already exists in the world folder, the map will not be downloaded, even if toggleDownloadMap is set to true.
 toggleDownloadMap = true
 mapDownloadUrl = "https://github.com/opentibiabr/canary/releases/download/v3.2.0/otservbr.otbm"
-mapName = "otservbr"
-mapAuthor = "OpenTibiaBR"
+mapName = "koetemap"
+mapAuthor = "Shin Online"
 
 -- Party List limitations
 -- max distance in which players in party list are visible
@@ -422,7 +422,7 @@ maxMarketOffersAtATimePerPlayer = 100
 mysqlHost = "127.0.0.1"
 mysqlUser = "root"
 mysqlPass = "root"
-mysqlDatabase = "otservbr-global"
+mysqlDatabase = "canary"
 mysqlDatabaseBackup = false
 mysqlPort = 3306
 mysqlSock = ""

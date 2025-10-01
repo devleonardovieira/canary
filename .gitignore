@@ -401,3 +401,8 @@ database_backup
 # CLION
 cmake-build-*
 compile_commands.json
+CANARY_DEVELOPMENT_RULES.md
+config.lua.dist
+data-canary/world/koetemap.otbm
+ninja.zip
+vcpkg_no_mariadb.json
