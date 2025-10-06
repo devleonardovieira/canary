@@ -15,3 +15,6 @@ dofile(CORE_DIRECTORY .. "/libs/systems/load.lua")
 
 -- Tables
 dofile(CORE_DIRECTORY .. "/libs/tables/load.lua")
+
+-- functions naruto
+dofile(CORE_DIRECTORY .. "/libs/functions/systems.lua")

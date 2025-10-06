@@ -406,3 +406,5 @@ config.lua.dist
 data-canary/world/koetemap.otbm
 ninja.zip
 vcpkg_no_mariadb.json
+planejamento_quests.md
+revscript-Monsters.md
