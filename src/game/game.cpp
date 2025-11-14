@@ -68,6 +68,7 @@
 #include "enums/object_category.hpp"
 
 #include <appearances.pb.h>
+#include <atomic>
 
 // MMO-style trade window offers tracking
 #include <array>
@@ -164,7 +165,17 @@ namespace {
         while (reserve && !reserve->getItemList().empty()) {
             auto item = reserve->getItemList().front();
             const uint32_t moveCount = item->getItemCount();
-            game.internalMoveItem(reserve, p, INDEX_WHEREEVER, item, moveCount, nullptr, FLAG_IGNOREAUTOSTACK);
+            const ReturnValue ret = game.internalMoveItem(reserve, p, INDEX_WHEREEVER, item, moveCount, nullptr, FLAG_IGNOREAUTOSTACK);
+            if (ret != RETURNVALUE_NOERROR) {
+                // Fallback: drop on player tile to avoid item loss
+                auto tile = p->getTile();
+                if (tile) {
+                    game.internalMoveItem(reserve, tile, INDEX_WHEREEVER, item, moveCount, nullptr, FLAG_IGNOREAUTOSTACK);
+                } else {
+                    // As a last resort, try moving back to player's inventory again
+                    game.internalMoveItem(reserve, p, INDEX_WHEREEVER, item, moveCount, nullptr, FLAG_IGNOREAUTOSTACK);
+                }
+            }
         }
     }
 
@@ -192,6 +203,13 @@ namespace {
             g_tradeWindowReserve.erase(p2->getID());
         }
     }
+
+    // Trade move failure metrics (lightweight instrumentation)
+    static std::atomic<uint64_t> g_tradeMoveFailures_total{0};
+    static std::atomic<uint64_t> g_tradeMoveFailures_room{0};
+    static std::atomic<uint64_t> g_tradeMoveFailures_capacity{0};
+    static std::atomic<uint64_t> g_tradeMoveFailures_other{0};
+    static std::atomic<uint64_t> g_tradeInboxFallback_success{0};
 }
 
 std::vector<std::weak_ptr<Creature>> checkCreatureLists[EVENT_CREATURECOUNT];
@@ -5426,48 +5444,105 @@ void Game::playerAcceptTrade(uint32_t playerId) {
             player->setTradeState(TRADE_TRANSFER);
             tradePartner->setTradeState(TRADE_TRANSFER);
 
-            auto moveOffers = [&](const std::shared_ptr<Player>& from, const std::shared_ptr<Player>& to) -> std::optional<std::string> {
+            struct MovedOp { std::shared_ptr<Item> item; uint32_t count; std::shared_ptr<Cylinder> from; std::shared_ptr<Cylinder> to; };
+            std::vector<MovedOp> movedA; // player -> partner
+            std::vector<MovedOp> movedB; // partner -> player
+
+            auto moveOffers = [&](const std::shared_ptr<Player>& from, const std::shared_ptr<Player>& to, std::vector<MovedOp>& moved) -> std::optional<std::string> {
                 auto it = g_tradeWindowOffers.find(from->getID());
                 if (it == g_tradeWindowOffers.end()) {
                     return std::nullopt; // nada a mover
                 }
                 // Move only from reserved container to ensure correctness
                 auto reserve = getOrCreateTradeReserve(from);
+                // Precheck: garantir quantidade total disponível por itemId quando múltiplos slots usam o mesmo ID
+                std::unordered_map<uint16_t, uint32_t> requiredById;
+                for (const auto& slot : it->second) {
+                    if (slot.occupied && slot.count > 0 && slot.itemId != 0) {
+                        requiredById[slot.itemId] += slot.count;
+                    }
+                }
+                for (const auto& [reqId, reqCount] : requiredById) {
+                    uint32_t have = 0;
+                    for (const auto& resItem : reserve->getItemList()) {
+                        if (resItem->getID() == reqId) {
+                            have += Item::countByType(resItem, -1);
+                        }
+                    }
+                    if (have < reqCount) {
+                        return std::optional<std::string>{"You don't have enough reserved items to complete the offer."};
+                    }
+                }
+                bool inboxNoticeSent = false;
                 for (const auto& slot : it->second) {
                     if (!slot.occupied || slot.count == 0 || slot.itemId == 0) {
                         continue;
                     }
-                    g_logger().info("[game] moveOffers: from='{}' to='{}' itemId={} count={}", from->getName(), to->getName(), slot.itemId, static_cast<int>(slot.count));
                     uint32_t remaining = slot.count;
                     while (remaining > 0) {
                         auto item = findItemOfType(reserve, slot.itemId, true, -1);
                         if (!item) {
-                            g_logger().warn("[game] moveOffers: '{}' lacks RESERVED itemId={} remaining={}", from->getName(), slot.itemId, remaining);
                             return std::optional<std::string>{"You don't have enough reserved items to complete the offer."};
                         }
                         uint32_t moveCount = std::min<uint32_t>(remaining, item->getItemCount());
                         const ReturnValue ret = internalMoveItem(reserve, to, INDEX_WHEREEVER, item, moveCount, nullptr, FLAG_IGNOREAUTOSTACK);
                         if (ret != RETURNVALUE_NOERROR) {
-                            g_logger().warn("[game] moveOffers: move failed ret={} itemId={} count={}", static_cast<int>(ret), slot.itemId, moveCount);
+                            // Instrumentar falhas e tentar fallback para inbox quando apropriado
+                            g_tradeMoveFailures_total.fetch_add(1, std::memory_order_relaxed);
+                            if (ret == RETURNVALUE_NOTENOUGHCAPACITY) {
+                                g_tradeMoveFailures_capacity.fetch_add(1, std::memory_order_relaxed);
+                            } else if (ret == RETURNVALUE_NOTENOUGHROOM || ret == RETURNVALUE_CONTAINERNOTENOUGHROOM) {
+                                g_tradeMoveFailures_room.fetch_add(1, std::memory_order_relaxed);
+                            } else {
+                                g_tradeMoveFailures_other.fetch_add(1, std::memory_order_relaxed);
+                            }
+
+                            // Fallback: enviar para inbox do destinatário (depot inbox)
+                            const auto& inbox = to->getInbox();
+                            if (inbox) {
+                                const ReturnValue inret = internalMoveItem(reserve, inbox, INDEX_WHEREEVER, item, moveCount, nullptr, FLAG_NOLIMIT);
+                                if (inret == RETURNVALUE_NOERROR) {
+                                    g_tradeInboxFallback_success.fetch_add(1, std::memory_order_relaxed);
+                                    moved.push_back(MovedOp{ item, moveCount, inbox, reserve });
+                                    remaining -= moveCount;
+                                    if (!inboxNoticeSent) {
+                                        to->sendTextMessage(MESSAGE_TRANSACTION, "Some traded items were sent to your inbox due to lack of capacity or space.");
+                                        inboxNoticeSent = true;
+                                    }
+                                    continue; // prosseguir com o restante
+                                }
+                            }
                             return std::optional<std::string>{getTradeErrorDescription(ret, item)};
                         }
-                        g_logger().info("[game] moveOffers: moved RESERVED itemId={} x{} from '{}' to '{}'", slot.itemId, moveCount, from->getName(), to->getName());
+                        moved.push_back(MovedOp{ item, moveCount, to, reserve });
                         remaining -= moveCount;
                     }
                 }
                 return std::nullopt;
             };
 
-            if (auto err = moveOffers(player, tradePartner)) {
+            if (auto err = moveOffers(player, tradePartner, movedA)) {
                 player->sendTextMessage(MESSAGE_TRANSACTION, *err);
                 tradePartner->sendTextMessage(MESSAGE_TRANSACTION, "Trade cancelled.");
                 closeBoth();
                 return;
             }
 
-            if (auto err = moveOffers(tradePartner, player)) {
+            if (auto err = moveOffers(tradePartner, player, movedB)) {
                 tradePartner->sendTextMessage(MESSAGE_TRANSACTION, *err);
                 player->sendTextMessage(MESSAGE_TRANSACTION, "Trade cancelled.");
+                // rollback previously moved items A->B back to reserve
+                for (auto it = movedA.rbegin(); it != movedA.rend(); ++it) {
+                    const auto& op = *it;
+                    const ReturnValue ret = internalMoveItem(op.from, op.to, INDEX_WHEREEVER, op.item, op.count, nullptr, FLAG_IGNOREAUTOSTACK);
+                    if (ret != RETURNVALUE_NOERROR) {
+                        // Fallback: drop on original owner's tile to avoid loss
+                        auto tile = player->getTile();
+                        if (tile) {
+                            internalMoveItem(op.from, tile, INDEX_WHEREEVER, op.item, op.count, nullptr, FLAG_IGNOREAUTOSTACK);
+                        }
+                    }
+                }
                 closeBoth();
                 return;
             }
@@ -11959,6 +12034,10 @@ void Game::playerTradeWindowAddItem(uint32_t playerId, uint8_t slot, uint16_t it
         g_logger().info("[game] addItem: tradePartner not set for player={} (trade not started?)", player->getName());
         return;
     }
+    // Guard: avoid modifications when transfer is in progress
+    if (player->getTradeState() == TRADE_TRANSFER) {
+        return;
+    }
     if (count == 0) {
         g_logger().info("[game] addItem: invalid count={} (must be > 0)", static_cast<int>(count));
         return;
@@ -12007,6 +12086,10 @@ void Game::playerTradeWindowRemoveItem(uint32_t playerId, uint8_t slot) {
     auto tradePartner = player->tradePartner;
     if (!tradePartner) {
         g_logger().info("[game] removeItem: tradePartner not set for player={} (trade not started?)", player->getName());
+        return;
+    }
+    // Guard: avoid modifications when transfer is in progress
+    if (player->getTradeState() == TRADE_TRANSFER) {
         return;
     }
     auto it = g_tradeWindowOffers.find(player->getID());

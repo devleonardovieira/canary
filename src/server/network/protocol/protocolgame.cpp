@@ -2097,8 +2097,6 @@ void ProtocolGame::parseLookInTrade(NetworkMessage &msg) {
 // Solicitação de trade por jogador (MMO-style handshake sem item)
 void ProtocolGame::parseRequestPlayerTrade(NetworkMessage &msg) {
     const uint32_t targetCreatureId = msg.get<uint32_t>();
-    // removed verbose trade request log
-
     if (!player) {
         return;
     }
