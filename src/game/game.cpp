@@ -5399,10 +5399,6 @@ void Game::playerAcceptTrade(uint32_t playerId) {
         const auto offersSelfIt = g_tradeWindowOffers.find(player->getID());
         const auto offersPartnerIt = g_tradeWindowOffers.find(tradePartner->getID());
         const bool hasMmoOffers = offersSelfIt != g_tradeWindowOffers.end() || offersPartnerIt != g_tradeWindowOffers.end();
-        g_logger().info("[game] accept: states self={} partner={} hasMmoOffers={}",
-                        static_cast<int>(player->getTradeState()),
-                        static_cast<int>(tradePartner->getTradeState()),
-                        hasMmoOffers);
 
         auto closeBoth = [&]() {
             player->setTradeState(TRADE_NONE);
@@ -5430,7 +5426,6 @@ void Game::playerAcceptTrade(uint32_t playerId) {
             };
             const bool selfHas = hasAny(offersSelfIt);
             const bool partnerHas = hasAny(offersPartnerIt);
-            g_logger().info("[game] accept: offers selfHas={} partnerHas={}", selfHas, partnerHas);
             if (!selfHas || !partnerHas) {
                 player->sendTextMessage(MESSAGE_TRANSACTION, "Both players must offer at least one item to accept.");
                 tradePartner->sendTextMessage(MESSAGE_TRANSACTION, "Both players must offer at least one item to accept.");
@@ -12026,12 +12021,10 @@ bool Game::processBankAuction(std::shared_ptr<Player> player, const std::shared_
 void Game::playerTradeWindowAddItem(uint32_t playerId, uint8_t slot, uint16_t itemId, uint8_t count) {
     const auto& player = getPlayerByID(playerId);
     if (!player) {
-        g_logger().info("[game] addItem: player not found for id={}", playerId);
         return;
     }
     auto tradePartner = player->tradePartner;
     if (!tradePartner) {
-        g_logger().info("[game] addItem: tradePartner not set for player={} (trade not started?)", player->getName());
         return;
     }
     // Guard: avoid modifications when transfer is in progress
@@ -12039,7 +12032,6 @@ void Game::playerTradeWindowAddItem(uint32_t playerId, uint8_t slot, uint16_t it
         return;
     }
     if (count == 0) {
-        g_logger().info("[game] addItem: invalid count={} (must be > 0)", static_cast<int>(count));
         return;
     }
     auto& offers = g_tradeWindowOffers[player->getID()];
@@ -12051,7 +12043,6 @@ void Game::playerTradeWindowAddItem(uint32_t playerId, uint8_t slot, uint16_t it
     // If slot already has an offer, release its reservation first
     if (offers[slot].occupied && offers[slot].itemId != 0 && offers[slot].count > 0) {
         if (!releaseItemsToInventory(*this, player, offers[slot].itemId, offers[slot].count)) {
-            g_logger().warn("[game] addItem: failed to release previous reserved items for player={} slot={}", player->getName(), static_cast<int>(slot));
         }
         offers[slot] = TradeOfferSlot{};
     }
@@ -12066,8 +12057,6 @@ void Game::playerTradeWindowAddItem(uint32_t playerId, uint8_t slot, uint16_t it
     offers[slot].count = count;
     offers[slot].occupied = true;
 
-    g_logger().info("[game] addItem: player={} slot={} itemId={} count={} (reserved & echo)", player->getName(), static_cast<int>(slot), itemId, static_cast<int>(count));
-
     // Echo update to both sides
     player->sendTradeWindowItemAdd(true, slot, itemId, count);
     tradePartner->sendTradeWindowItemAdd(false, slot, itemId, count);
@@ -12080,12 +12069,10 @@ void Game::playerTradeWindowAddItem(uint32_t playerId, uint8_t slot, uint16_t it
 void Game::playerTradeWindowRemoveItem(uint32_t playerId, uint8_t slot) {
     const auto& player = getPlayerByID(playerId);
     if (!player) {
-        g_logger().info("[game] removeItem: player not found for id={}", playerId);
         return;
     }
     auto tradePartner = player->tradePartner;
     if (!tradePartner) {
-        g_logger().info("[game] removeItem: tradePartner not set for player={} (trade not started?)", player->getName());
         return;
     }
     // Guard: avoid modifications when transfer is in progress
@@ -12095,20 +12082,17 @@ void Game::playerTradeWindowRemoveItem(uint32_t playerId, uint8_t slot) {
     auto it = g_tradeWindowOffers.find(player->getID());
     if (it != g_tradeWindowOffers.end()) {
         if (slot >= it->second.size()) {
-            g_logger().info("[game] removeItem: slot={} out of range (current slots={})", static_cast<int>(slot), static_cast<int>(it->second.size()));
             return;
         }
         const auto prev = it->second[slot];
         // Release reserved items for this slot back to player's inventory
         if (prev.occupied && prev.itemId != 0 && prev.count > 0) {
             if (!releaseItemsToInventory(*this, player, prev.itemId, prev.count)) {
-                g_logger().warn("[game] removeItem: failed to release reserved items back to inventory for player={} itemId={} count={}", player->getName(), prev.itemId, static_cast<int>(prev.count));
             }
         }
         it->second[slot] = TradeOfferSlot{};
     }
 
-    g_logger().info("[game] removeItem: player={} slot={} (released reserve & echo)", player->getName(), static_cast<int>(slot));
     // Echo update to both sides
     player->sendTradeWindowItemRemove(true, slot);
     tradePartner->sendTradeWindowItemRemove(false, slot);
