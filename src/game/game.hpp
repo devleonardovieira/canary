@@ -248,6 +248,10 @@ public:
 	void playerDebugAssert(uint32_t playerId, const std::string &assertLine, const std::string &date, const std::string &description, const std::string &comment);
 	void playerPreyAction(uint32_t playerId, uint8_t slot, uint8_t action, uint8_t option, int8_t index, uint16_t raceId);
 	void playerTaskHuntingAction(uint32_t playerId, uint8_t slot, uint8_t action, bool upgrade, uint16_t raceId);
+
+	// MMO-style player trade window actions
+	void playerTradeWindowAddItem(uint32_t playerId, uint8_t slot, uint16_t itemId, uint8_t count);
+	void playerTradeWindowRemoveItem(uint32_t playerId, uint8_t slot);
 	void playerNpcGreet(uint32_t playerId, uint32_t npcId);
 	void playerAnswerModalWindow(uint32_t playerId, uint32_t modalWindowId, uint8_t button, uint8_t choice);
 	void playerForgeFuseItems(
@@ -347,7 +351,9 @@ public:
 	void playerBrowseField(uint32_t playerId, const Position &pos);
 	void playerSeekInContainer(uint32_t playerId, uint8_t containerId, uint16_t index, uint8_t containerCategory);
 	void playerUpdateHouseWindow(uint32_t playerId, uint8_t listId, uint32_t windowTextId, const std::string &text);
-	void playerRequestTrade(uint32_t playerId, const Position &pos, uint8_t stackPos, uint32_t tradePlayerId, uint16_t itemId);
+    void playerRequestTrade(uint32_t playerId, const Position &pos, uint8_t stackPos, uint32_t tradePlayerId, uint16_t itemId);
+    // Solicitação de trade por jogador (sem item inicial)
+    void playerRequestPlayerTrade(uint32_t playerId, uint32_t tradePlayerId);
 	void playerAcceptTrade(uint32_t playerId);
 	void playerLookInTrade(uint32_t playerId, bool lookAtCounterOffer, uint8_t index);
 	void playerBuyItem(uint32_t playerId, uint16_t itemId, uint8_t count, uint16_t amount, bool ignoreCap = false, bool inBackpacks = false);

@@ -928,8 +928,14 @@ public:
 	void sendMarketDetail(uint16_t itemId, uint8_t tier) const;
 	void sendMarketAcceptOffer(const MarketOfferEx &offer) const;
 	void sendMarketCancelOffer(const MarketOfferEx &offer) const;
-	void sendTradeItemRequest(const std::string &traderName, const std::shared_ptr<Item> &item, bool ack) const;
-	void sendTradeClose() const;
+    void sendTradeItemRequest(const std::string &traderName, const std::shared_ptr<Item> &item, bool ack) const;
+    void sendTradeClose() const;
+    // MMO-style player trade window helpers
+    void sendTradeWindowOpen(const std::string &otherName, uint8_t slotCount) const;
+    void sendTradeWindowItemAdd(bool playerSide, uint8_t slot, uint16_t itemId, uint8_t count) const;
+    void sendTradeWindowItemRemove(bool playerSide, uint8_t slot) const;
+    void sendTradeWindowAcceptUpdate(bool playerSide, bool accepted) const;
+    void sendTradeWindowClose() const;
 	void sendWorldLight(LightInfo lightInfo) const;
 	void sendTibiaTime(int32_t time) const;
 	void sendChannelsDialog() const;

@@ -2378,15 +2378,46 @@ void Player::sendMarketCancelOffer(const MarketOfferEx &offer) const {
 }
 
 void Player::sendTradeItemRequest(const std::string &traderName, const std::shared_ptr<Item> &item, bool ack) const {
-	if (client) {
-		client->sendTradeItemRequest(traderName, item, ack);
-	}
+    if (client) {
+        client->sendTradeItemRequest(traderName, item, ack);
+    }
 }
 
 void Player::sendTradeClose() const {
-	if (client) {
-		client->sendCloseTrade();
-	}
+    if (client) {
+        client->sendCloseTrade();
+    }
+}
+
+// MMO-style player trade window helpers
+void Player::sendTradeWindowOpen(const std::string &otherName, uint8_t slotCount) const {
+    if (client) {
+        client->sendTradeWindowOpen(otherName, slotCount);
+    }
+}
+
+void Player::sendTradeWindowItemAdd(bool playerSide, uint8_t slot, uint16_t itemId, uint8_t count) const {
+    if (client) {
+        client->sendTradeWindowItemAdd(playerSide, slot, itemId, count);
+    }
+}
+
+void Player::sendTradeWindowItemRemove(bool playerSide, uint8_t slot) const {
+    if (client) {
+        client->sendTradeWindowItemRemove(playerSide, slot);
+    }
+}
+
+void Player::sendTradeWindowAcceptUpdate(bool playerSide, bool accepted) const {
+    if (client) {
+        client->sendTradeWindowAcceptUpdate(playerSide, accepted);
+    }
+}
+
+void Player::sendTradeWindowClose() const {
+    if (client) {
+        client->sendTradeWindowClose();
+    }
 }
 
 void Player::sendWorldLight(LightInfo lightInfo) const {

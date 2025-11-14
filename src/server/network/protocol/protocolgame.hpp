@@ -234,8 +234,16 @@ private:
 	void parseSeekInContainer(NetworkMessage &msg);
 
 	// trade methods
-	void parseRequestTrade(NetworkMessage &msg);
+    void parseRequestTrade(NetworkMessage &msg);
+    // Solicitação de trade por jogador (MMO-style handshake sem item)
+    void parseRequestPlayerTrade(NetworkMessage &msg);
 	void parseLookInTrade(NetworkMessage &msg);
+
+	// MMO-style player trade window (client actions)
+	void parseTradeActionAddItem(NetworkMessage &msg);
+	void parseTradeActionRemoveItem(NetworkMessage &msg);
+	void parseTradeActionAccept(NetworkMessage &msg);
+	void parseTradeActionCancel(NetworkMessage &msg);
 
 	// market methods
 	void parseMarketLeave();
@@ -390,6 +398,13 @@ private:
 	void sendMarketDetail(uint16_t itemId, uint8_t tier);
 	void sendTradeItemRequest(const std::string &traderName, const std::shared_ptr<Item> &item, bool ack);
 	void sendCloseTrade();
+
+	// MMO-style player trade window (server messages)
+	void sendTradeWindowOpen(const std::string &otherName, uint8_t slotCount);
+	void sendTradeWindowItemAdd(bool playerSide, uint8_t slot, uint16_t itemId, uint8_t count);
+	void sendTradeWindowItemRemove(bool playerSide, uint8_t slot);
+	void sendTradeWindowAcceptUpdate(bool playerSide, bool accepted);
+	void sendTradeWindowClose();
 	void updatePartyTrackerAnalyzer(const std::shared_ptr<Party> &party);
 
 	void sendTextWindow(uint32_t windowTextId, uint32_t itemId, const std::string &text);

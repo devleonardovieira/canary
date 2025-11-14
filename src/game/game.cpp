@@ -69,6 +69,40 @@
 
 #include <appearances.pb.h>
 
+// MMO-style trade window offers tracking
+#include <array>
+#include <unordered_map>
+#include <optional>
+
+namespace {
+    struct TradeOfferSlot {
+        uint16_t itemId = 0;
+        uint8_t count = 0;
+        bool occupied = false;
+    };
+
+    // Per-player offer slots for the MMO-style trade window
+    static std::unordered_map<uint32_t, std::array<TradeOfferSlot, 12>> g_tradeWindowOffers;
+
+    static void initTradeWindowOffers(const std::shared_ptr<Player>& p1, const std::shared_ptr<Player>& p2) {
+        if (p1) {
+            g_tradeWindowOffers[p1->getID()] = {};
+        }
+        if (p2) {
+            g_tradeWindowOffers[p2->getID()] = {};
+        }
+    }
+
+    static void clearTradeWindowOffers(const std::shared_ptr<Player>& p1, const std::shared_ptr<Player>& p2) {
+        if (p1) {
+            g_tradeWindowOffers.erase(p1->getID());
+        }
+        if (p2) {
+            g_tradeWindowOffers.erase(p2->getID());
+        }
+    }
+}
+
 std::vector<std::weak_ptr<Creature>> checkCreatureLists[EVENT_CREATURECOUNT];
 
 namespace InternalGame {
@@ -5114,6 +5148,72 @@ void Game::playerRequestTrade(uint32_t playerId, const Position &pos, uint8_t st
 	internalStartTrade(player, tradePartner, tradeItem);
 }
 
+// Solicitação de trade por jogador (sem item inicial)
+void Game::playerRequestPlayerTrade(uint32_t playerId, uint32_t tradePlayerId) {
+    const auto &player = getPlayerByID(playerId);
+    if (!player) {
+        return;
+    }
+
+    std::shared_ptr<Player> tradePartner = getPlayerByID(tradePlayerId);
+    if (!tradePartner || tradePartner == player) {
+        player->sendTextMessage(MESSAGE_FAILURE, "Sorry, not possible.");
+        return;
+    }
+
+    // Alcance e linha de visão semelhantes ao fluxo clássico
+    if (!Position::areInRange<2, 2, 0>(tradePartner->getPosition(), player->getPosition())) {
+        std::ostringstream ss;
+        ss << tradePartner->getName() << " tells you to move closer.";
+        player->sendTextMessage(MESSAGE_TRADE, ss.str());
+        return;
+    }
+
+    if (!canThrowObjectTo(tradePartner->getPosition(), player->getPosition(), SightLine_CheckSightLineAndFloor)) {
+        player->sendCancelMessage(RETURNVALUE_CREATUREISNOTREACHABLE);
+        return;
+    }
+
+    // Evitar colidir com trades já em andamento
+    if (player->tradeState != TRADE_NONE && !(player->tradeState == TRADE_ACKNOWLEDGE && player->tradePartner == tradePartner)) {
+        player->sendCancelMessage(RETURNVALUE_YOUAREALREADYTRADING);
+        return;
+    } else if (tradePartner->tradeState != TRADE_NONE && tradePartner->tradePartner != player) {
+        player->sendCancelMessage(RETURNVALUE_THISPLAYERISALREADYTRADING);
+        return;
+    }
+
+    // Handshake inicial sem item
+    const auto prevState = player->getTradeState();
+    player->tradePartner = tradePartner;
+    player->tradeItem = nullptr;
+    player->tradeState = TRADE_INITIATED;
+
+    // Inicializar rastreamento de ofertas MMO
+    initTradeWindowOffers(player, tradePartner);
+
+    if (tradePartner->tradeState == TRADE_NONE) {
+        std::ostringstream ss;
+        ss << player->getName() << " wants to trade with you.";
+        tradePartner->sendTextMessage(MESSAGE_TRANSACTION, ss.str());
+        tradePartner->tradeState = TRADE_ACKNOWLEDGE;
+        tradePartner->tradePartner = player;
+    } else {
+        // Caso o parceiro já esteja em ACK com outro fluxo, manter compatibilidade de mensagem
+        std::ostringstream ss;
+        ss << player->getName() << " wants to trade with you.";
+        tradePartner->sendTextMessage(MESSAGE_TRANSACTION, ss.str());
+    }
+
+    // Se este jogador já estava em ACKNOWLEDGE com o mesmo parceiro, tratar o segundo pedido como aceitação mútua
+    // e abrir a janela de trade para ambos (fluxo estilo MMO sem item).
+    if (prevState == TRADE_ACKNOWLEDGE && player->tradePartner == tradePartner) {
+        // Usa 12 slots por padrão (compatível com envio existente)
+        player->sendTradeWindowOpen(tradePartner->getName(), 12);
+        tradePartner->sendTradeWindowOpen(player->getName(), 12);
+    }
+}
+
 bool Game::internalStartTrade(const std::shared_ptr<Player> &player, const std::shared_ptr<Player> &tradePartner, const std::shared_ptr<Item> &tradeItem) {
 	if (player->tradeState != TRADE_NONE && !(player->tradeState == TRADE_ACKNOWLEDGE && player->tradePartner == tradePartner)) {
 		player->sendCancelMessage(RETURNVALUE_YOUAREALREADYTRADING);
@@ -5132,7 +5232,11 @@ bool Game::internalStartTrade(const std::shared_ptr<Player> &player, const std::
 	player->tradeState = TRADE_INITIATED;
 	tradeItems[tradeItem] = player->getID();
 
-	player->sendTradeItemRequest(player->getName(), tradeItem, true);
+	// Initialize MMO-style offer tracking
+	initTradeWindowOffers(player, tradePartner);
+
+    // Open MMO-style trade window on initiator using partner's name
+    player->sendTradeItemRequest(tradePartner->getName(), tradeItem, true);
 
 	if (tradePartner->tradeState == TRADE_NONE) {
 		std::ostringstream ss;
@@ -5150,10 +5254,10 @@ bool Game::internalStartTrade(const std::shared_ptr<Player> &player, const std::
 }
 
 void Game::playerAcceptTrade(uint32_t playerId) {
-	const auto &player = getPlayerByID(playerId);
-	if (!player) {
-		return;
-	}
+    const auto &player = getPlayerByID(playerId);
+    if (!player) {
+        return;
+    }
 
 	if (!(player->getTradeState() == TRADE_ACKNOWLEDGE || player->getTradeState() == TRADE_INITIATED)) {
 		return;
@@ -5169,86 +5273,193 @@ void Game::playerAcceptTrade(uint32_t playerId) {
 		return;
 	}
 
-	player->setTradeState(TRADE_ACCEPT);
+    const auto prevState = player->getTradeState();
+    player->setTradeState(TRADE_ACCEPT);
+    // Abrir a janela somente quando o alvo (ACKNOWLEDGE) aceitar
+    if (prevState == TRADE_ACKNOWLEDGE) {
+        player->sendTradeWindowOpen(tradePartner->getName(), 12);
+        tradePartner->sendTradeWindowOpen(player->getName(), 12);
+    }
+    // Notify both clients about accept state change for MMO trade UI
+    player->sendTradeWindowAcceptUpdate(true, true);
+    tradePartner->sendTradeWindowAcceptUpdate(false, true);
 
-	if (tradePartner->getTradeState() == TRADE_ACCEPT) {
-		std::shared_ptr<Item> tradeItem1 = player->tradeItem;
-		std::shared_ptr<Item> tradeItem2 = tradePartner->tradeItem;
-		if (!g_events().eventPlayerOnTradeAccept(player, tradePartner, tradeItem1, tradeItem2)) {
-			internalCloseTrade(player);
-			return;
-		}
+    if (tradePartner->getTradeState() == TRADE_ACCEPT) {
+        // Se houver ofertas MMO, executar transferência multi-itens; senão, fluxo clássico.
+        const auto offersSelfIt = g_tradeWindowOffers.find(player->getID());
+        const auto offersPartnerIt = g_tradeWindowOffers.find(tradePartner->getID());
+        const bool hasMmoOffers = offersSelfIt != g_tradeWindowOffers.end() || offersPartnerIt != g_tradeWindowOffers.end();
+        g_logger().info("[game] accept: states self={} partner={} hasMmoOffers={}",
+                        static_cast<int>(player->getTradeState()),
+                        static_cast<int>(tradePartner->getTradeState()),
+                        hasMmoOffers);
 
-		if (!g_callbacks().checkCallback(EventCallback_t::playerOnTradeAccept, &EventCallback::playerOnTradeAccept, player, tradePartner, tradeItem1, tradeItem2)) {
-			internalCloseTrade(player);
-			return;
-		}
+        auto closeBoth = [&]() {
+            player->setTradeState(TRADE_NONE);
+            player->tradeItem = nullptr;
+            player->tradePartner = nullptr;
+            player->sendTradeClose();
 
-		player->setTradeState(TRADE_TRANSFER);
-		tradePartner->setTradeState(TRADE_TRANSFER);
+            tradePartner->setTradeState(TRADE_NONE);
+            tradePartner->tradeItem = nullptr;
+            tradePartner->tradePartner = nullptr;
+            tradePartner->sendTradeClose();
 
-		auto it = tradeItems.find(tradeItem1);
-		if (it != tradeItems.end()) {
-			tradeItems.erase(it);
-		}
+            clearTradeWindowOffers(player, tradePartner);
+        };
 
-		it = tradeItems.find(tradeItem2);
-		if (it != tradeItems.end()) {
-			tradeItems.erase(it);
-		}
+        if (hasMmoOffers) {
+            // Gate: ambos precisam ter ao menos um slot ocupado
+            auto hasAny = [](const auto& it) {
+                if (it == g_tradeWindowOffers.end()) return false;
+                const auto& arr = it->second;
+                for (const auto& s : arr) {
+                    if (s.occupied && s.count > 0 && s.itemId != 0) return true;
+                }
+                return false;
+            };
+            const bool selfHas = hasAny(offersSelfIt);
+            const bool partnerHas = hasAny(offersPartnerIt);
+            g_logger().info("[game] accept: offers selfHas={} partnerHas={}", selfHas, partnerHas);
+            if (!selfHas || !partnerHas) {
+                player->sendTextMessage(MESSAGE_TRANSACTION, "Both players must offer at least one item to accept.");
+                tradePartner->sendTextMessage(MESSAGE_TRANSACTION, "Both players must offer at least one item to accept.");
+                // Reset accept state allowing players to adjust offers
+                player->setTradeState(TRADE_ACKNOWLEDGE);
+                tradePartner->setTradeState(TRADE_ACKNOWLEDGE);
+                player->sendTradeWindowAcceptUpdate(true, false);
+                tradePartner->sendTradeWindowAcceptUpdate(false, false);
+                return;
+            }
+            player->setTradeState(TRADE_TRANSFER);
+            tradePartner->setTradeState(TRADE_TRANSFER);
 
-		bool isSuccess = false;
+            auto moveOffers = [&](const std::shared_ptr<Player>& from, const std::shared_ptr<Player>& to) -> std::optional<std::string> {
+                auto it = g_tradeWindowOffers.find(from->getID());
+                if (it == g_tradeWindowOffers.end()) {
+                    return std::nullopt; // nada a mover
+                }
+                for (const auto& slot : it->second) {
+                    if (!slot.occupied || slot.count == 0 || slot.itemId == 0) {
+                        continue;
+                    }
+                    g_logger().info("[game] moveOffers: from='{}' to='{}' itemId={} count={}", from->getName(), to->getName(), slot.itemId, static_cast<int>(slot.count));
+                    uint32_t remaining = slot.count;
+                    while (remaining > 0) {
+                        auto item = findItemOfType(from, slot.itemId, true, -1);
+                        if (!item) {
+                            g_logger().warn("[game] moveOffers: '{}' lacks itemId={} remaining={}", from->getName(), slot.itemId, remaining);
+                            return std::optional<std::string>{"You don't have enough items to complete the offer."};
+                        }
+                        uint32_t moveCount = std::min<uint32_t>(remaining, item->getItemCount());
+                        auto parent = item->getParent();
+                        if (!parent) {
+                            g_logger().warn("[game] moveOffers: itemId={} has no parent cylinder", slot.itemId);
+                            return std::optional<std::string>{"Item cannot be moved."};
+                        }
+                        const ReturnValue ret = internalMoveItem(parent, to, INDEX_WHEREEVER, item, moveCount, nullptr, FLAG_IGNOREAUTOSTACK);
+                        if (ret != RETURNVALUE_NOERROR) {
+                            g_logger().warn("[game] moveOffers: move failed ret={} itemId={} count={}", static_cast<int>(ret), slot.itemId, moveCount);
+                            return std::optional<std::string>{getTradeErrorDescription(ret, item)};
+                        }
+                        g_logger().info("[game] moveOffers: moved itemId={} x{} from '{}' to '{}'", slot.itemId, moveCount, from->getName(), to->getName());
+                        remaining -= moveCount;
+                    }
+                }
+                return std::nullopt;
+            };
 
-		ReturnValue ret1 = internalAddItem(tradePartner, tradeItem1, INDEX_WHEREEVER, 0, true);
-		ReturnValue ret2 = internalAddItem(player, tradeItem2, INDEX_WHEREEVER, 0, true);
-		if (ret1 == RETURNVALUE_NOERROR && ret2 == RETURNVALUE_NOERROR) {
-			ret1 = internalRemoveItem(tradeItem1, tradeItem1->getItemCount(), true);
-			ret2 = internalRemoveItem(tradeItem2, tradeItem2->getItemCount(), true);
-			if (ret1 == RETURNVALUE_NOERROR && ret2 == RETURNVALUE_NOERROR) {
-				std::shared_ptr<Cylinder> cylinder1 = tradeItem1->getParent();
-				std::shared_ptr<Cylinder> cylinder2 = tradeItem2->getParent();
+            if (auto err = moveOffers(player, tradePartner)) {
+                player->sendTextMessage(MESSAGE_TRANSACTION, *err);
+                tradePartner->sendTextMessage(MESSAGE_TRANSACTION, "Trade cancelled.");
+                closeBoth();
+                return;
+            }
 
-				uint32_t count1 = tradeItem1->getItemCount();
-				uint32_t count2 = tradeItem2->getItemCount();
+            if (auto err = moveOffers(tradePartner, player)) {
+                tradePartner->sendTextMessage(MESSAGE_TRANSACTION, *err);
+                player->sendTextMessage(MESSAGE_TRANSACTION, "Trade cancelled.");
+                closeBoth();
+                return;
+            }
 
-				ret1 = internalMoveItem(cylinder1, tradePartner, INDEX_WHEREEVER, tradeItem1, count1, nullptr, FLAG_IGNOREAUTOSTACK, nullptr, tradeItem2);
-				if (ret1 == RETURNVALUE_NOERROR) {
-					internalMoveItem(cylinder2, player, INDEX_WHEREEVER, tradeItem2, count2, nullptr, FLAG_IGNOREAUTOSTACK);
+            closeBoth();
+            // Também fechar a janela de trade moderna
+            player->sendTradeWindowClose();
+            tradePartner->sendTradeWindowClose();
+            return;
+        }
 
-					tradeItem1->onTradeEvent(ON_TRADE_TRANSFER, tradePartner);
-					tradeItem2->onTradeEvent(ON_TRADE_TRANSFER, player);
+        // Fluxo clássico (um item por jogador)
+        std::shared_ptr<Item> tradeItem1 = player->tradeItem;
+        std::shared_ptr<Item> tradeItem2 = tradePartner->tradeItem;
+        if (!g_events().eventPlayerOnTradeAccept(player, tradePartner, tradeItem1, tradeItem2)) {
+            internalCloseTrade(player);
+            return;
+        }
 
-					isSuccess = true;
-				}
-			}
-		}
+        if (!g_callbacks().checkCallback(EventCallback_t::playerOnTradeAccept, &EventCallback::playerOnTradeAccept, player, tradePartner, tradeItem1, tradeItem2)) {
+            internalCloseTrade(player);
+            return;
+        }
 
-		if (!isSuccess) {
-			std::string errorDescription;
+        player->setTradeState(TRADE_TRANSFER);
+        tradePartner->setTradeState(TRADE_TRANSFER);
 
-			if (tradePartner->tradeItem) {
-				errorDescription = getTradeErrorDescription(ret1, tradeItem1);
-				tradePartner->sendTextMessage(MESSAGE_TRANSACTION, errorDescription);
-				tradePartner->tradeItem->onTradeEvent(ON_TRADE_CANCEL, tradePartner);
-			}
+        auto it = tradeItems.find(tradeItem1);
+        if (it != tradeItems.end()) {
+            tradeItems.erase(it);
+        }
 
-			if (player->tradeItem) {
-				errorDescription = getTradeErrorDescription(ret2, tradeItem2);
-				player->sendTextMessage(MESSAGE_TRANSACTION, errorDescription);
-				player->tradeItem->onTradeEvent(ON_TRADE_CANCEL, player);
-			}
-		}
+        it = tradeItems.find(tradeItem2);
+        if (it != tradeItems.end()) {
+            tradeItems.erase(it);
+        }
 
-		player->setTradeState(TRADE_NONE);
-		player->tradeItem = nullptr;
-		player->tradePartner = nullptr;
-		player->sendTradeClose();
+        bool isSuccess = false;
 
-		tradePartner->setTradeState(TRADE_NONE);
-		tradePartner->tradeItem = nullptr;
-		tradePartner->tradePartner = nullptr;
-		tradePartner->sendTradeClose();
-	}
+        ReturnValue ret1 = internalAddItem(tradePartner, tradeItem1, INDEX_WHEREEVER, 0, true);
+        ReturnValue ret2 = internalAddItem(player, tradeItem2, INDEX_WHEREEVER, 0, true);
+        if (ret1 == RETURNVALUE_NOERROR && ret2 == RETURNVALUE_NOERROR) {
+            ret1 = internalRemoveItem(tradeItem1, tradeItem1->getItemCount(), true);
+            ret2 = internalRemoveItem(tradeItem2, tradeItem2->getItemCount(), true);
+            if (ret1 == RETURNVALUE_NOERROR && ret2 == RETURNVALUE_NOERROR) {
+                std::shared_ptr<Cylinder> cylinder1 = tradeItem1->getParent();
+                std::shared_ptr<Cylinder> cylinder2 = tradeItem2->getParent();
+
+                uint32_t count1 = tradeItem1->getItemCount();
+                uint32_t count2 = tradeItem2->getItemCount();
+
+                ret1 = internalMoveItem(cylinder1, tradePartner, INDEX_WHEREEVER, tradeItem1, count1, nullptr, FLAG_IGNOREAUTOSTACK, nullptr, tradeItem2);
+                if (ret1 == RETURNVALUE_NOERROR) {
+                    internalMoveItem(cylinder2, player, INDEX_WHEREEVER, tradeItem2, count2, nullptr, FLAG_IGNOREAUTOSTACK);
+
+                    tradeItem1->onTradeEvent(ON_TRADE_TRANSFER, tradePartner);
+                    tradeItem2->onTradeEvent(ON_TRADE_TRANSFER, player);
+
+                    isSuccess = true;
+                }
+            }
+        }
+
+        if (!isSuccess) {
+            std::string errorDescription;
+
+            if (tradePartner->tradeItem) {
+                errorDescription = getTradeErrorDescription(ret1, tradeItem1);
+                tradePartner->sendTextMessage(MESSAGE_TRANSACTION, errorDescription);
+                tradePartner->tradeItem->onTradeEvent(ON_TRADE_CANCEL, tradePartner);
+            }
+
+            if (player->tradeItem) {
+                errorDescription = getTradeErrorDescription(ret2, tradeItem2);
+                player->sendTextMessage(MESSAGE_TRANSACTION, errorDescription);
+                player->tradeItem->onTradeEvent(ON_TRADE_CANCEL, player);
+            }
+        }
+
+        closeBoth();
+    }
 }
 
 std::string Game::getTradeErrorDescription(ReturnValue ret, const std::shared_ptr<Item> &item) {
@@ -5388,6 +5599,9 @@ void Game::internalCloseTrade(const std::shared_ptr<Player> &player) {
 
 		tradePartner->sendTextMessage(MESSAGE_FAILURE, "Trade cancelled.");
 		tradePartner->sendTradeClose();
+
+		// Clear MMO-style offer tracking on cancel
+		clearTradeWindowOffers(player, tradePartner);
 	}
 }
 
@@ -11635,4 +11849,67 @@ bool Game::processBankAuction(std::shared_ptr<Player> player, const std::shared_
 	}
 
 	return true;
+}
+// MMO-style player trade window actions
+void Game::playerTradeWindowAddItem(uint32_t playerId, uint8_t slot, uint16_t itemId, uint8_t count) {
+    const auto& player = getPlayerByID(playerId);
+    if (!player) {
+        g_logger().info("[game] addItem: player not found for id={}", playerId);
+        return;
+    }
+    auto tradePartner = player->tradePartner;
+    if (!tradePartner) {
+        g_logger().info("[game] addItem: tradePartner not set for player={} (trade not started?)", player->getName());
+        return;
+    }
+    if (slot >= 12 || count == 0) {
+        g_logger().info("[game] addItem: invalid slot={} or count={} (max slots=12)", static_cast<int>(slot), static_cast<int>(count));
+        return;
+    }
+
+    auto& offers = g_tradeWindowOffers[player->getID()];
+    offers[slot].itemId = itemId;
+    offers[slot].count = count;
+    offers[slot].occupied = true;
+
+    g_logger().info("[game] addItem: player={} slot={} itemId={} count={} (echo to both)", player->getName(), static_cast<int>(slot), itemId, static_cast<int>(count));
+
+    // Echo update to both sides
+    player->sendTradeWindowItemAdd(true, slot, itemId, count);
+    tradePartner->sendTradeWindowItemAdd(false, slot, itemId, count);
+
+    // Reset accept state on change
+    player->sendTradeWindowAcceptUpdate(true, false);
+    tradePartner->sendTradeWindowAcceptUpdate(false, false);
+}
+
+void Game::playerTradeWindowRemoveItem(uint32_t playerId, uint8_t slot) {
+    const auto& player = getPlayerByID(playerId);
+    if (!player) {
+        g_logger().info("[game] removeItem: player not found for id={}", playerId);
+        return;
+    }
+    auto tradePartner = player->tradePartner;
+    if (!tradePartner) {
+        g_logger().info("[game] removeItem: tradePartner not set for player={} (trade not started?)", player->getName());
+        return;
+    }
+    if (slot >= 12) {
+        g_logger().info("[game] removeItem: invalid slot={} (max slots=12)", static_cast<int>(slot));
+        return;
+    }
+
+    auto it = g_tradeWindowOffers.find(player->getID());
+    if (it != g_tradeWindowOffers.end()) {
+        it->second[slot] = TradeOfferSlot{};
+    }
+
+    g_logger().info("[game] removeItem: player={} slot={} (echo to both)", player->getName(), static_cast<int>(slot));
+    // Echo update to both sides
+    player->sendTradeWindowItemRemove(true, slot);
+    tradePartner->sendTradeWindowItemRemove(false, slot);
+
+    // Reset accept state on change
+    player->sendTradeWindowAcceptUpdate(true, false);
+    tradePartner->sendTradeWindowAcceptUpdate(false, false);
 }
