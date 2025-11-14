@@ -84,21 +84,112 @@ namespace {
     // Per-player offer slots for the MMO-style trade window
     static std::unordered_map<uint32_t, std::array<TradeOfferSlot, 12>> g_tradeWindowOffers;
 
+    // Per-player reserved items container for MMO trade (keeps offered items out of inventory)
+    static std::unordered_map<uint32_t, std::shared_ptr<Container>> g_tradeWindowReserve;
+
+    // Helper: get or create the hidden reserve container for a player
+    static std::shared_ptr<Container> getOrCreateTradeReserve(const std::shared_ptr<Player>& p) {
+        auto it = g_tradeWindowReserve.find(p->getID());
+        if (it != g_tradeWindowReserve.end()) {
+            return it->second;
+        }
+        // Create a simple bag container to hold reserved items
+        const auto reserveItem = Item::CreateItem(ITEM_BAG, 1);
+        const auto reserveContainer = reserveItem->getContainer();
+        g_tradeWindowReserve[p->getID()] = reserveContainer;
+        return reserveContainer;
+    }
+
+    // Helper: move exactly 'count' of 'itemId' from player's inventory to reserve
+    static bool reserveItemsFromInventory(Game& game, const std::shared_ptr<Player>& p, uint16_t itemId, uint32_t count, std::string& err) {
+        auto reserve = getOrCreateTradeReserve(p);
+        uint32_t remaining = count;
+        std::vector<std::tuple<std::shared_ptr<Item>, uint32_t, std::shared_ptr<Cylinder>>> performedMoves; // item, movedCount, fromParent
+        while (remaining > 0) {
+            auto item = game.findItemOfType(p, itemId, true, -1);
+            if (!item) {
+                err = "You don't have enough items to offer.";
+                break;
+            }
+            auto parent = item->getParent();
+            if (!parent) {
+                err = "Item cannot be moved.";
+                break;
+            }
+            uint32_t moveCount = std::min<uint32_t>(remaining, item->getItemCount());
+            const ReturnValue ret = game.internalMoveItem(parent, reserve, INDEX_WHEREEVER, item, moveCount, nullptr, FLAG_IGNOREAUTOSTACK);
+            if (ret != RETURNVALUE_NOERROR) {
+                err = game.getTradeErrorDescription(ret, item);
+                break;
+            }
+            performedMoves.emplace_back(item, moveCount, reserve);
+            remaining -= moveCount;
+        }
+
+        if (remaining == 0) {
+            return true;
+        }
+
+        // Rollback: move back anything we pushed into reserve
+        for (const auto& [movedItem, movedCount, fromParent] : performedMoves) {
+            game.internalMoveItem(fromParent, p, INDEX_WHEREEVER, movedItem, movedCount, nullptr, FLAG_IGNOREAUTOSTACK);
+        }
+        return false;
+    }
+
+    // Helper: release items of 'itemId'/'count' from reserve back to the player's inventory
+    static bool releaseItemsToInventory(Game& game, const std::shared_ptr<Player>& p, uint16_t itemId, uint32_t count) {
+        auto reserve = getOrCreateTradeReserve(p);
+        uint32_t remaining = count;
+        while (remaining > 0) {
+            // Find inside reserve
+            auto item = game.findItemOfType(reserve, itemId, true, -1);
+            if (!item) {
+                return false; // not enough reserved items
+            }
+            uint32_t moveCount = std::min<uint32_t>(remaining, item->getItemCount());
+            const ReturnValue ret = game.internalMoveItem(reserve, p, INDEX_WHEREEVER, item, moveCount, nullptr, FLAG_IGNOREAUTOSTACK);
+            if (ret != RETURNVALUE_NOERROR) {
+                return false;
+            }
+            remaining -= moveCount;
+        }
+        return true;
+    }
+
+    // Helper: release all reserved items back to player's inventory (on cancel/close)
+    static void releaseAllReserve(Game& game, const std::shared_ptr<Player>& p) {
+        auto reserve = getOrCreateTradeReserve(p);
+        // Iterate until empty
+        while (reserve && !reserve->getItemList().empty()) {
+            auto item = reserve->getItemList().front();
+            const uint32_t moveCount = item->getItemCount();
+            game.internalMoveItem(reserve, p, INDEX_WHEREEVER, item, moveCount, nullptr, FLAG_IGNOREAUTOSTACK);
+        }
+    }
+
     static void initTradeWindowOffers(const std::shared_ptr<Player>& p1, const std::shared_ptr<Player>& p2) {
         if (p1) {
             g_tradeWindowOffers[p1->getID()] = {};
+            getOrCreateTradeReserve(p1);
         }
         if (p2) {
             g_tradeWindowOffers[p2->getID()] = {};
+            getOrCreateTradeReserve(p2);
         }
     }
 
     static void clearTradeWindowOffers(const std::shared_ptr<Player>& p1, const std::shared_ptr<Player>& p2) {
         if (p1) {
             g_tradeWindowOffers.erase(p1->getID());
+            // On clear, release any still-reserved items back to the owner
+            releaseAllReserve(g_game(), p1);
+            g_tradeWindowReserve.erase(p1->getID());
         }
         if (p2) {
             g_tradeWindowOffers.erase(p2->getID());
+            releaseAllReserve(g_game(), p2);
+            g_tradeWindowReserve.erase(p2->getID());
         }
     }
 }
@@ -5339,6 +5430,8 @@ void Game::playerAcceptTrade(uint32_t playerId) {
                 if (it == g_tradeWindowOffers.end()) {
                     return std::nullopt; // nada a mover
                 }
+                // Move only from reserved container to ensure correctness
+                auto reserve = getOrCreateTradeReserve(from);
                 for (const auto& slot : it->second) {
                     if (!slot.occupied || slot.count == 0 || slot.itemId == 0) {
                         continue;
@@ -5346,23 +5439,18 @@ void Game::playerAcceptTrade(uint32_t playerId) {
                     g_logger().info("[game] moveOffers: from='{}' to='{}' itemId={} count={}", from->getName(), to->getName(), slot.itemId, static_cast<int>(slot.count));
                     uint32_t remaining = slot.count;
                     while (remaining > 0) {
-                        auto item = findItemOfType(from, slot.itemId, true, -1);
+                        auto item = findItemOfType(reserve, slot.itemId, true, -1);
                         if (!item) {
-                            g_logger().warn("[game] moveOffers: '{}' lacks itemId={} remaining={}", from->getName(), slot.itemId, remaining);
-                            return std::optional<std::string>{"You don't have enough items to complete the offer."};
+                            g_logger().warn("[game] moveOffers: '{}' lacks RESERVED itemId={} remaining={}", from->getName(), slot.itemId, remaining);
+                            return std::optional<std::string>{"You don't have enough reserved items to complete the offer."};
                         }
                         uint32_t moveCount = std::min<uint32_t>(remaining, item->getItemCount());
-                        auto parent = item->getParent();
-                        if (!parent) {
-                            g_logger().warn("[game] moveOffers: itemId={} has no parent cylinder", slot.itemId);
-                            return std::optional<std::string>{"Item cannot be moved."};
-                        }
-                        const ReturnValue ret = internalMoveItem(parent, to, INDEX_WHEREEVER, item, moveCount, nullptr, FLAG_IGNOREAUTOSTACK);
+                        const ReturnValue ret = internalMoveItem(reserve, to, INDEX_WHEREEVER, item, moveCount, nullptr, FLAG_IGNOREAUTOSTACK);
                         if (ret != RETURNVALUE_NOERROR) {
                             g_logger().warn("[game] moveOffers: move failed ret={} itemId={} count={}", static_cast<int>(ret), slot.itemId, moveCount);
                             return std::optional<std::string>{getTradeErrorDescription(ret, item)};
                         }
-                        g_logger().info("[game] moveOffers: moved itemId={} x{} from '{}' to '{}'", slot.itemId, moveCount, from->getName(), to->getName());
+                        g_logger().info("[game] moveOffers: moved RESERVED itemId={} x{} from '{}' to '{}'", slot.itemId, moveCount, from->getName(), to->getName());
                         remaining -= moveCount;
                     }
                 }
@@ -5583,6 +5671,10 @@ void Game::internalCloseTrade(const std::shared_ptr<Player> &player) {
 	player->sendTextMessage(MESSAGE_FAILURE, "Trade cancelled.");
 	player->sendTradeClose();
 
+    // Ensure any reserved items are returned to player on cancel
+    releaseAllReserve(*this, player);
+    g_tradeWindowReserve.erase(player->getID());
+
 	if (tradePartner) {
 		if (tradePartner->getTradeItem()) {
 			auto it = tradeItems.find(tradePartner->getTradeItem());
@@ -5601,7 +5693,7 @@ void Game::internalCloseTrade(const std::shared_ptr<Player> &player) {
 		tradePartner->sendTradeClose();
 
 		// Clear MMO-style offer tracking on cancel
-		clearTradeWindowOffers(player, tradePartner);
+        clearTradeWindowOffers(player, tradePartner);
 	}
 }
 
@@ -11866,13 +11958,26 @@ void Game::playerTradeWindowAddItem(uint32_t playerId, uint8_t slot, uint16_t it
         g_logger().info("[game] addItem: invalid slot={} or count={} (max slots=12)", static_cast<int>(slot), static_cast<int>(count));
         return;
     }
-
     auto& offers = g_tradeWindowOffers[player->getID()];
+    // If slot already has an offer, release its reservation first
+    if (offers[slot].occupied && offers[slot].itemId != 0 && offers[slot].count > 0) {
+        if (!releaseItemsToInventory(*this, player, offers[slot].itemId, offers[slot].count)) {
+            g_logger().warn("[game] addItem: failed to release previous reserved items for player={} slot={}", player->getName(), static_cast<int>(slot));
+        }
+        offers[slot] = TradeOfferSlot{};
+    }
+
+    // Validation + reservation: move items from player inventory to reserve first
+    std::string err;
+    if (!reserveItemsFromInventory(*this, player, itemId, count, err)) {
+        player->sendTextMessage(MESSAGE_TRANSACTION, err.empty() ? "Failed to offer items." : err);
+        return;
+    }
     offers[slot].itemId = itemId;
     offers[slot].count = count;
     offers[slot].occupied = true;
 
-    g_logger().info("[game] addItem: player={} slot={} itemId={} count={} (echo to both)", player->getName(), static_cast<int>(slot), itemId, static_cast<int>(count));
+    g_logger().info("[game] addItem: player={} slot={} itemId={} count={} (reserved & echo)", player->getName(), static_cast<int>(slot), itemId, static_cast<int>(count));
 
     // Echo update to both sides
     player->sendTradeWindowItemAdd(true, slot, itemId, count);
@@ -11901,10 +12006,17 @@ void Game::playerTradeWindowRemoveItem(uint32_t playerId, uint8_t slot) {
 
     auto it = g_tradeWindowOffers.find(player->getID());
     if (it != g_tradeWindowOffers.end()) {
+        const auto prev = it->second[slot];
+        // Release reserved items for this slot back to player's inventory
+        if (prev.occupied && prev.itemId != 0 && prev.count > 0) {
+            if (!releaseItemsToInventory(*this, player, prev.itemId, prev.count)) {
+                g_logger().warn("[game] removeItem: failed to release reserved items back to inventory for player={} itemId={} count={}", player->getName(), prev.itemId, static_cast<int>(prev.count));
+            }
+        }
         it->second[slot] = TradeOfferSlot{};
     }
 
-    g_logger().info("[game] removeItem: player={} slot={} (echo to both)", player->getName(), static_cast<int>(slot));
+    g_logger().info("[game] removeItem: player={} slot={} (released reserve & echo)", player->getName(), static_cast<int>(slot));
     // Echo update to both sides
     player->sendTradeWindowItemRemove(true, slot);
     tradePartner->sendTradeWindowItemRemove(false, slot);
