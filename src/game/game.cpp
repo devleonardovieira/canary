@@ -5670,6 +5670,8 @@ void Game::internalCloseTrade(const std::shared_ptr<Player> &player) {
 
 	player->sendTextMessage(MESSAGE_FAILURE, "Trade cancelled.");
 	player->sendTradeClose();
+    // Ensure MMO-style window is closed as well
+    player->sendTradeWindowClose();
 
     // Ensure any reserved items are returned to player on cancel
     releaseAllReserve(*this, player);
@@ -5691,6 +5693,8 @@ void Game::internalCloseTrade(const std::shared_ptr<Player> &player) {
 
 		tradePartner->sendTextMessage(MESSAGE_FAILURE, "Trade cancelled.");
 		tradePartner->sendTradeClose();
+        // Ensure MMO-style window is closed as well
+        tradePartner->sendTradeWindowClose();
 
 		// Clear MMO-style offer tracking on cancel
         clearTradeWindowOffers(player, tradePartner);
