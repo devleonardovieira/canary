@@ -81,8 +81,8 @@ namespace {
         bool occupied = false;
     };
 
-    // Per-player offer slots for the MMO-style trade window
-    static std::unordered_map<uint32_t, std::array<TradeOfferSlot, 12>> g_tradeWindowOffers;
+    // Per-player offer slots for the MMO-style trade window (dynamic)
+    static std::unordered_map<uint32_t, std::vector<TradeOfferSlot>> g_tradeWindowOffers;
 
     // Per-player reserved items container for MMO trade (keeps offered items out of inventory)
     static std::unordered_map<uint32_t, std::shared_ptr<Container>> g_tradeWindowReserve;
@@ -5299,9 +5299,9 @@ void Game::playerRequestPlayerTrade(uint32_t playerId, uint32_t tradePlayerId) {
     // Se este jogador já estava em ACKNOWLEDGE com o mesmo parceiro, tratar o segundo pedido como aceitação mútua
     // e abrir a janela de trade para ambos (fluxo estilo MMO sem item).
     if (prevState == TRADE_ACKNOWLEDGE && player->tradePartner == tradePartner) {
-        // Usa 12 slots por padrão (compatível com envio existente)
-        player->sendTradeWindowOpen(tradePartner->getName(), 12);
-        tradePartner->sendTradeWindowOpen(player->getName(), 12);
+        // Abrir com 1 slot inicial; slots crescerão dinamicamente conforme itens forem adicionados
+        player->sendTradeWindowOpen(tradePartner->getName(), 1);
+        tradePartner->sendTradeWindowOpen(player->getName(), 1);
     }
 }
 
@@ -5368,8 +5368,9 @@ void Game::playerAcceptTrade(uint32_t playerId) {
     player->setTradeState(TRADE_ACCEPT);
     // Abrir a janela somente quando o alvo (ACKNOWLEDGE) aceitar
     if (prevState == TRADE_ACKNOWLEDGE) {
-        player->sendTradeWindowOpen(tradePartner->getName(), 12);
-        tradePartner->sendTradeWindowOpen(player->getName(), 12);
+        // Abrir com 1 slot inicial
+        player->sendTradeWindowOpen(tradePartner->getName(), 1);
+        tradePartner->sendTradeWindowOpen(player->getName(), 1);
     }
     // Notify both clients about accept state change for MMO trade UI
     player->sendTradeWindowAcceptUpdate(true, true);
@@ -11958,11 +11959,16 @@ void Game::playerTradeWindowAddItem(uint32_t playerId, uint8_t slot, uint16_t it
         g_logger().info("[game] addItem: tradePartner not set for player={} (trade not started?)", player->getName());
         return;
     }
-    if (slot >= 12 || count == 0) {
-        g_logger().info("[game] addItem: invalid slot={} or count={} (max slots=12)", static_cast<int>(slot), static_cast<int>(count));
+    if (count == 0) {
+        g_logger().info("[game] addItem: invalid count={} (must be > 0)", static_cast<int>(count));
         return;
     }
     auto& offers = g_tradeWindowOffers[player->getID()];
+    // Ensure dynamic capacity for the requested slot (guard against extreme values)
+    if (slot >= offers.size()) {
+        // slot is uint8_t; theoretical max 255. Grow to slot+1.
+        offers.resize(static_cast<size_t>(slot) + 1);
+    }
     // If slot already has an offer, release its reservation first
     if (offers[slot].occupied && offers[slot].itemId != 0 && offers[slot].count > 0) {
         if (!releaseItemsToInventory(*this, player, offers[slot].itemId, offers[slot].count)) {
@@ -12003,13 +12009,12 @@ void Game::playerTradeWindowRemoveItem(uint32_t playerId, uint8_t slot) {
         g_logger().info("[game] removeItem: tradePartner not set for player={} (trade not started?)", player->getName());
         return;
     }
-    if (slot >= 12) {
-        g_logger().info("[game] removeItem: invalid slot={} (max slots=12)", static_cast<int>(slot));
-        return;
-    }
-
     auto it = g_tradeWindowOffers.find(player->getID());
     if (it != g_tradeWindowOffers.end()) {
+        if (slot >= it->second.size()) {
+            g_logger().info("[game] removeItem: slot={} out of range (current slots={})", static_cast<int>(slot), static_cast<int>(it->second.size()));
+            return;
+        }
         const auto prev = it->second[slot];
         // Release reserved items for this slot back to player's inventory
         if (prev.occupied && prev.itemId != 0 && prev.count > 0) {
