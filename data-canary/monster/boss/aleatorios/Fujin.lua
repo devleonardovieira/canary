@@ -61,8 +61,8 @@ monster.loot = {
 }
 
 monster.attacks = {
-	{ name = "melee", interval = 1000, chance = 100 },
-	{ name = "doton", interval = 2000, chance = 35, minDamage = -300, maxDamage = -460 },
+	{ name = "melee", interval = 1, chance = 10000 },
+	{ name = "exori frigo", interval = 1, chance = 100000, minDamage = -300, maxDamage = -460 },
 }
 
 monster.defenses = { defense = 10, armor = 10 }
