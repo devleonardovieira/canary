@@ -4,5 +4,8 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/opentibiabr/canary.git"
+  },
+  "scripts": {
+    "preinstall": "node preinstall.js"
   }
 }
