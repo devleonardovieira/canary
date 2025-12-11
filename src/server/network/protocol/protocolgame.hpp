@@ -234,9 +234,9 @@ private:
 	void parseSeekInContainer(NetworkMessage &msg);
 
 	// trade methods
-    void parseRequestTrade(NetworkMessage &msg);
-    // Solicitação de trade por jogador (MMO-style handshake sem item)
-    void parseRequestPlayerTrade(NetworkMessage &msg);
+	void parseRequestTrade(NetworkMessage &msg);
+	// Solicitação de trade por jogador (MMO-style handshake sem item)
+	void parseRequestPlayerTrade(NetworkMessage &msg);
 	void parseLookInTrade(NetworkMessage &msg);
 
 	// MMO-style player trade window (client actions)

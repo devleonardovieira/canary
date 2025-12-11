@@ -966,15 +966,15 @@ void ProtocolGame::writeToOutputBuffer(NetworkMessage &msg) {
 }
 
 void ProtocolGame::parsePacket(NetworkMessage &msg) {
-    if (!acceptPackets || g_game().getGameState() == GAME_STATE_SHUTDOWN || msg.getLength() <= 0) {
-        return;
-    }
+	if (!acceptPackets || g_game().getGameState() == GAME_STATE_SHUTDOWN || msg.getLength() <= 0) {
+		return;
+	}
 
-    uint8_t recvbyte = msg.getByte();
+	uint8_t recvbyte = msg.getByte();
 
-    // Debug incoming MMO trade actions early to verify delivery
-    if (recvbyte == 0x55 || recvbyte == 0x56 || recvbyte == 0x57 || recvbyte == 0x58) {
-    }
+	// Debug incoming MMO trade actions early to verify delivery
+	if (recvbyte == 0x55 || recvbyte == 0x56 || recvbyte == 0x57 || recvbyte == 0x58) {
+	}
 
 	if (!player || player->isRemoved()) {
 		if (recvbyte == 0x0F) {
@@ -1086,29 +1086,29 @@ void ProtocolGame::parsePacketFromDispatcher(NetworkMessage &msg, uint8_t recvby
 		case 0x32:
 			parseExtendedOpcode(msg);
 			break; // otclient extended opcode
-	case 0x38:
-		parsePlayerTyping(msg); // player are typing or not
-		break;
-    // custom player trade window (MMO-style) - client actions
-    case 0x55:
-        parseTradeActionAddItem(msg);
-        break;
-    case 0x56:
-        parseTradeActionRemoveItem(msg);
-        break;
-    case 0x57:
-        parseTradeActionAccept(msg);
-        break;
-    case 0x58:
-        parseTradeActionCancel(msg);
-        break;
-    // Solicitação de trade por jogador (ClientRequestPlayerTrade = 0x59)
-    case 0x59:
-        parseRequestPlayerTrade(msg);
-        break;
-	case 0x60:
-		parseInventoryImbuements(msg);
-		break;
+		case 0x38:
+			parsePlayerTyping(msg); // player are typing or not
+			break;
+		// custom player trade window (MMO-style) - client actions
+		case 0x55:
+			parseTradeActionAddItem(msg);
+			break;
+		case 0x56:
+			parseTradeActionRemoveItem(msg);
+			break;
+		case 0x57:
+			parseTradeActionAccept(msg);
+			break;
+		case 0x58:
+			parseTradeActionCancel(msg);
+			break;
+		// Solicitação de trade por jogador (ClientRequestPlayerTrade = 0x59)
+		case 0x59:
+			parseRequestPlayerTrade(msg);
+			break;
+		case 0x60:
+			parseInventoryImbuements(msg);
+			break;
 		case 0x61:
 			parseOpenWheel(msg);
 			break;
@@ -2092,57 +2092,58 @@ void ProtocolGame::parseRequestTrade(NetworkMessage &msg) {
 }
 
 void ProtocolGame::parseLookInTrade(NetworkMessage &msg) {
-    bool counterOffer = (msg.getByte() == 0x01);
-    uint8_t index = msg.getByte();
-    g_game().playerLookInTrade(player->getID(), counterOffer, index);
+	bool counterOffer = (msg.getByte() == 0x01);
+	uint8_t index = msg.getByte();
+	g_game().playerLookInTrade(player->getID(), counterOffer, index);
 }
 
 // Solicitação de trade por jogador (MMO-style handshake sem item)
 void ProtocolGame::parseRequestPlayerTrade(NetworkMessage &msg) {
-    const uint32_t targetCreatureId = msg.get<uint32_t>();
-    if (!player) {
-        return;
-    }
+	const uint32_t targetCreatureId = msg.get<uint32_t>();
+	if (!player) {
+		return;
+	}
 
-    g_game().playerRequestPlayerTrade(player->getID(), targetCreatureId);
+	g_game().playerRequestPlayerTrade(player->getID(), targetCreatureId);
 }
 
 // custom player trade window (MMO-style)
 void ProtocolGame::parseTradeActionAddItem(NetworkMessage &msg) {
-    // layout: [slot:u8][itemId:u16][count:u8]
-    const uint8_t slot = msg.getByte();
-    const uint16_t itemId = msg.get<uint16_t>();
-    const uint8_t count = msg.getByte();
+	// layout: [slot:u8][itemId:u16][count:u8]
+	const uint8_t slot = msg.getByte();
+	const uint16_t itemId = msg.get<uint16_t>();
+	const uint8_t count = msg.getByte();
 
-    if (player) {
-        g_game().playerTradeWindowAddItem(player->getID(), slot, itemId, count);
-    }
+	if (player) {
+		g_game().playerTradeWindowAddItem(player->getID(), slot, itemId, count);
+	}
 }
 
 void ProtocolGame::parseTradeActionRemoveItem(NetworkMessage &msg) {
-    // layout: [slot:u8]
-    const uint8_t slot = msg.getByte();
+	// layout: [slot:u8]
+	const uint8_t slot = msg.getByte();
 
-    if (player) {
-        g_game().playerTradeWindowRemoveItem(player->getID(), slot);
-    }
+	if (player) {
+		g_game().playerTradeWindowRemoveItem(player->getID(), slot);
+	}
 }
 
 void ProtocolGame::parseTradeActionAccept(NetworkMessage &msg) {
-    // layout: [accepted:u8]
-    const bool accepted = msg.getByte() != 0;
+	// layout: [accepted:u8]
+	const bool accepted = msg.getByte() != 0;
 
-   // Bridge to classic accept flow for compatibility.
-    if (accepted && player) {
-        g_game().playerAcceptTrade(player->getID());
-    }
+	// Bridge to classic accept flow for compatibility.
+	if (accepted && player) {
+		g_game().playerAcceptTrade(player->getID());
+	}
 }
 
 void ProtocolGame::parseTradeActionCancel(NetworkMessage &msg) {
-    // layout: no payload
-    (void)msg; if (player) {
-        g_game().playerCloseTrade(player->getID());
-    }
+	// layout: no payload
+	(void)msg;
+	if (player) {
+		g_game().playerCloseTrade(player->getID());
+	}
 }
 
 void ProtocolGame::parseAddVip(NetworkMessage &msg) {
@@ -6499,15 +6500,15 @@ void ProtocolGame::sendMarketDetail(uint16_t itemId, uint8_t tier) {
 }
 
 void ProtocolGame::sendTradeItemRequest(const std::string &traderName, const std::shared_ptr<Item> &item, bool ack) {
-    NetworkMessage msg;
+	NetworkMessage msg;
 
-    if (ack) {
-        msg.addByte(0x7D);
-    } else {
-        msg.addByte(0x7E);
-    }
+	if (ack) {
+		msg.addByte(0x7D);
+	} else {
+		msg.addByte(0x7E);
+	}
 
-    msg.addString(traderName);
+	msg.addString(traderName);
 
 	if (std::shared_ptr<Container> tradeContainer = item->getContainer()) {
 		std::list<std::shared_ptr<Container>> listContainer { tradeContainer };
@@ -6530,17 +6531,17 @@ void ProtocolGame::sendTradeItemRequest(const std::string &traderName, const std
 		for (const std::shared_ptr<Item> &listItem : itemList) {
 			AddItem(msg, listItem);
 		}
-    } else {
-        msg.addByte(0x01);
-        AddItem(msg, item);
-    }
-    writeToOutputBuffer(msg);
+	} else {
+		msg.addByte(0x01);
+		AddItem(msg, item);
+	}
+	writeToOutputBuffer(msg);
 }
 
 void ProtocolGame::sendCloseTrade() {
-    NetworkMessage msg;
-    msg.addByte(0x7F);
-    writeToOutputBuffer(msg);
+	NetworkMessage msg;
+	msg.addByte(0x7F);
+	writeToOutputBuffer(msg);
 }
 
 void ProtocolGame::sendCloseContainer(uint8_t cid) {
@@ -6712,9 +6713,9 @@ void ProtocolGame::sendPing() {
 }
 
 void ProtocolGame::sendPingBack() {
-    NetworkMessage msg;
-    msg.addByte(0x1E);
-    writeToOutputBuffer(msg);
+	NetworkMessage msg;
+	msg.addByte(0x1E);
+	writeToOutputBuffer(msg);
 }
 
 void ProtocolGame::sendDistanceShoot(const Position &from, const Position &to, uint16_t type) {
@@ -10197,41 +10198,41 @@ void ProtocolGame::sendHousesInfo() {
 }
 // MMO-style trade window senders
 void ProtocolGame::sendTradeWindowOpen(const std::string &otherName, uint8_t slotCount) {
-    NetworkMessage msg;
-    msg.addByte(0x50); // GameServerTradeWindowOpen (80)
-    msg.addString(otherName);
-    msg.addByte(slotCount);
-   writeToOutputBuffer(msg);
+	NetworkMessage msg;
+	msg.addByte(0x50); // GameServerTradeWindowOpen (80)
+	msg.addString(otherName);
+	msg.addByte(slotCount);
+	writeToOutputBuffer(msg);
 }
 
 void ProtocolGame::sendTradeWindowItemAdd(bool playerSide, uint8_t slot, uint16_t itemId, uint8_t count) {
-    NetworkMessage msg;
-    msg.addByte(0x51); // GameServerTradeWindowItemAdd (81)
-    msg.addByte(static_cast<uint8_t>(playerSide));
-    msg.addByte(slot);
-    msg.add<uint16_t>(itemId);
-    msg.addByte(count);
-   writeToOutputBuffer(msg);
+	NetworkMessage msg;
+	msg.addByte(0x51); // GameServerTradeWindowItemAdd (81)
+	msg.addByte(static_cast<uint8_t>(playerSide));
+	msg.addByte(slot);
+	msg.add<uint16_t>(itemId);
+	msg.addByte(count);
+	writeToOutputBuffer(msg);
 }
 
 void ProtocolGame::sendTradeWindowItemRemove(bool playerSide, uint8_t slot) {
-    NetworkMessage msg;
-    msg.addByte(0x52); // GameServerTradeWindowItemRemove (82)
-    msg.addByte(static_cast<uint8_t>(playerSide));
-    msg.addByte(slot);
-   writeToOutputBuffer(msg);
+	NetworkMessage msg;
+	msg.addByte(0x52); // GameServerTradeWindowItemRemove (82)
+	msg.addByte(static_cast<uint8_t>(playerSide));
+	msg.addByte(slot);
+	writeToOutputBuffer(msg);
 }
 
 void ProtocolGame::sendTradeWindowAcceptUpdate(bool playerSide, bool accepted) {
-    NetworkMessage msg;
-    msg.addByte(0x53); // GameServerTradeWindowAcceptUpdate (83)
-    msg.addByte(static_cast<uint8_t>(playerSide));
-    msg.addByte(static_cast<uint8_t>(accepted));
-  writeToOutputBuffer(msg);
+	NetworkMessage msg;
+	msg.addByte(0x53); // GameServerTradeWindowAcceptUpdate (83)
+	msg.addByte(static_cast<uint8_t>(playerSide));
+	msg.addByte(static_cast<uint8_t>(accepted));
+	writeToOutputBuffer(msg);
 }
 
 void ProtocolGame::sendTradeWindowClose() {
-    NetworkMessage msg;
-    msg.addByte(0x54); // GameServerTradeWindowClose (84)
-    writeToOutputBuffer(msg);
+	NetworkMessage msg;
+	msg.addByte(0x54); // GameServerTradeWindowClose (84)
+	writeToOutputBuffer(msg);
 }
