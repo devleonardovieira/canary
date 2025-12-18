@@ -1,16 +1,16 @@
 local spell = Spell("instant")
 
 local AREA_GOUKAKYU = {
-	{0, 1, 1, 1, 0},
-	{0, 1, 1, 1, 0},
-	{0, 1, 1, 1, 0},
-	{0, 1, 1, 1, 0},
-	{0, 0, 1, 0, 0},
-	{0, 0, 3, 0, 0},
-	{0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0},
+	{ 0, 1, 1, 1, 0 },
+	{ 0, 1, 1, 1, 0 },
+	{ 0, 1, 1, 1, 0 },
+	{ 0, 1, 1, 1, 0 },
+	{ 0, 0, 1, 0, 0 },
+	{ 0, 0, 3, 0, 0 },
+	{ 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0 },
+	{ 0, 0, 0, 0, 0 },
 }
 
 local function getSequencedAreaPositions(player, area)
@@ -27,23 +27,28 @@ local function getSequencedAreaPositions(player, area)
 				local relY = y - centerY
 				local fx, fy
 
-				 if dir == NORTH then
-          fx, fy =  relX,  relY
-        elseif dir == SOUTH then
-          fx, fy = -relX, -relY
-        elseif dir == EAST then                 -- <<< FIX
-          fx, fy = -relY,  relX
-        elseif dir == WEST then                 -- <<< FIX
-          fx, fy =  relY, -relX
-        end
+				if dir == NORTH then
+					fx, fy = relX, relY
+				elseif dir == SOUTH then
+					fx, fy = -relX, -relY
+				elseif dir == EAST then -- <<< FIX
+					fx, fy = -relY, relX
+				elseif dir == WEST then -- <<< FIX
+					fx, fy = relY, -relX
+				end
 
 				local worldPos = Position(origin.x + fx, origin.y + fy, origin.z)
 
 				local distKey
-				if dir == NORTH then distKey = -fy
-				elseif dir == SOUTH then distKey =  fy
-				elseif dir == EAST  then distKey =  fx
-				elseif dir == WEST  then distKey = -fx end
+				if dir == NORTH then
+					distKey = -fy
+				elseif dir == SOUTH then
+					distKey = fy
+				elseif dir == EAST then
+					distKey = fx
+				elseif dir == WEST then
+					distKey = -fx
+				end
 
 				lines[distKey] = lines[distKey] or {}
 				table.insert(lines[distKey], worldPos)
@@ -53,9 +58,13 @@ local function getSequencedAreaPositions(player, area)
 
 	local sorted = {}
 	local keys = {}
-	for k in pairs(lines) do table.insert(keys, k) end
+	for k in pairs(lines) do
+		table.insert(keys, k)
+	end
 	table.sort(keys)
-	for _, k in ipairs(keys) do table.insert(sorted, lines[k]) end
+	for _, k in ipairs(keys) do
+		table.insert(sorted, lines[k])
+	end
 	return sorted
 end
 
@@ -88,10 +97,10 @@ function spell.onCastSpell(player, variant)
 					local origin = p:getPosition()
 
 					local fx = {
-						[DIRECTION_NORTH] = {effectId = 116, x = 1, y = -1},
-						[DIRECTION_EAST]  = {effectId = 115, x = 5, y = 1},
-						[DIRECTION_SOUTH] = {effectId = 117, x = 1, y = 5},
-						[DIRECTION_WEST]  = {effectId = 114, x = -1, y = 1},
+						[DIRECTION_NORTH] = { effectId = 116, x = 1, y = -1 },
+						[DIRECTION_EAST] = { effectId = 115, x = 5, y = 1 },
+						[DIRECTION_SOUTH] = { effectId = 117, x = 1, y = 5 },
+						[DIRECTION_WEST] = { effectId = 114, x = -1, y = 1 },
 					}
 
 					local offset = fx[dir]
@@ -108,12 +117,11 @@ function spell.onCastSpell(player, variant)
 							end)
 						end
 					end
-				end
-			}
-		}
+				end,
+			},
+		},
 	})
 
-	
 	return animate(player, variant)
 end
 
