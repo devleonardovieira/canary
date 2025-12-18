@@ -1,7 +1,7 @@
 local combat = Combat()
 combat:setParameter(COMBAT_PARAM_TYPE, COMBAT_ICEDAMAGE)
 combat:setParameter(COMBAT_PARAM_EFFECT, CONST_ME_ICEATTACK)
-combat:setParameter(COMBAT_PARAM_DISTANCEEFFECT, CONST_ANI_SMALLICE)
+combat:setParameter(COMBAT_PARAM_DISTANCEEFFECT, 228)
 
 function onGetFormulaValues(player, level, maglevel)
 	local min = (level / 5) + (maglevel * 1.403) + 8
@@ -26,7 +26,7 @@ spell:impactSound(SOUND_EFFECT_TYPE_SPELL_ICE_STRIKE)
 spell:level(15)
 spell:mana(20)
 spell:isPremium(true)
-spell:range(3)
+--[[ spell:range(3) ]]
 spell:needCasterTargetOrDirection(true)
 spell:blockWalls(true)
 spell:cooldown(2 * 1000)

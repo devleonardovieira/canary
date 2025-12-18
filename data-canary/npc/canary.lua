@@ -1,4 +1,4 @@
-local npcName = "Canary"
+local npcName = "Shinobi"
 
 local npcType = Game.createNpcType(npcName)
 local npcConfig = {}
@@ -35,7 +35,7 @@ npcConfig.sounds = {
 npcConfig.voices = {
 	interval = 15000,
 	chance = 20,
-	{ text = "Welcome to the Canary Server!" },
+	{ text = "Welcome to the Shinobi Online Server!" },
 }
 
 npcConfig.flags = {
@@ -144,7 +144,7 @@ node1:addChildKeyword({ "no" }, StdModule.say, {
 
 -- Function called by the callback "npcHandler:setCallback(CALLBACK_GREET, greetCallback)" in end of file
 local function greetCallback(npc, player)
-	npcHandler:setMessage(MESSAGE_GREET, "Hello |PLAYERNAME|, you need more info about {canary}?")
+	npcHandler:setMessage(MESSAGE_GREET, "Hello |PLAYERNAME|, you need more info about {shinobi online}?")
 	return true
 end
 
