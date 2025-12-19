@@ -14,6 +14,10 @@ GameSpells.OPCODE = 50
 -- Registry for combat objects
 GameSpells.Combats = GameSpells.Combats or {}
 
+-- Anti-Spam Protection
+GameSpells.LastCast = GameSpells.LastCast or {}
+GameSpells.SpamDelay = 200 -- ms
+
 function GameSpells.registerCombat(spellName, combat)
     GameSpells.Combats[spellName] = combat
 end
@@ -25,9 +29,6 @@ GameSpells.Config = {
         asset = "/images/spell_assets/Lightning - 15 ft. radius - 8x8.png",
         tiles = {width = 8, height = 8},
         range = 7,
-        mana = 10, -- Visual only now
-        cooldown = 40000, -- Visual only now
-        groupCooldown = 4000, -- Visual only now
         group = 2
     },
     ["Divine Caldera"] = {
@@ -43,7 +44,6 @@ GameSpells.Config = {
 
 -- Function to handle the initial casting process (called from spell script)
 function GameSpells.handleCast(player, variant, spellName)
-    print('getMana: ', player:getMana())
     local config = GameSpells.Config[spellName]
     
     if not config then
@@ -64,16 +64,36 @@ end
 
 -- Function called by the opcode handler when client sends position
 function GameSpells.execute(player, spellName, position)
+    -- 1. Anti-Spam Check
+    local playerId = player:getId()
+--[[     local currentTime = os.time() ]]
+    
+    if not GameSpells.LastCast[playerId] then
+        GameSpells.LastCast[playerId] = {}
+    end
+    
+   --[[  local lastCast = GameSpells.LastCast[playerId][spellName] or 0
+    if (currentTime - lastCast) < GameSpells.SpamDelay then
+        return -- Ignore spam
+    end ]]
+    GameSpells.LastCast[playerId][spellName] = currentTime
+
+    -- 2. Validate Combat exists
     local combat = GameSpells.Combats[spellName]
     if not combat then
         return
     end
     
-    -- Security Checks (Anti-Cheat)
+    -- 3. Security Checks (Anti-Cheat)
     local config = GameSpells.Config[spellName]
     if config then
         local playerPos = player:getPosition()
         
+        -- Check Z-Level (CRITICAL)
+        if position.z ~= playerPos.z then
+            return
+        end
+
         -- Check Range
         if config.range and playerPos:getDistance(position) > config.range then
             return
@@ -85,7 +105,7 @@ function GameSpells.execute(player, spellName, position)
         end
     end
     
-    -- Execute Combat directly
+    -- 4. Execute Combat directly
     -- Engine has already validated mana/cooldown/level at the initial cast attempt
     local var = Variant(position)
     combat:execute(player, var)
