@@ -11,5 +11,9 @@
 	<effect id="7" name="7 effect" />
 	<!-- wing -->
 	<wing id="2" name="2 wings" />
-	<wing id="11" name="11 wings" /> 
+	<wing id="11" name="11 wings" />
+	
+	<!-- Casting System -->
+	<effect id="100" name="Casting Start" />
+	<effect id="101" name="Casting Finish" />
 </attachedeffects>

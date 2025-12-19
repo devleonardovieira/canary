@@ -161,6 +161,7 @@ function playerLoginGlobal.onLogin(player)
 	player:registerEvent("BossParticipation")
 	player:registerEvent("UpdatePlayerOnAdvancedLevel")
 	player:registerEvent("GameShop")
+	player:registerEvent("GameSpellsHandler")
 	return true
 end
 
