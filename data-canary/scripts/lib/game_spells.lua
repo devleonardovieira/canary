@@ -15,8 +15,10 @@ GameSpells.OPCODE = 50
 GameSpells.Combats = GameSpells.Combats or {}
 
 -- Anti-Spam Protection
+-- Structure: LastCast[playerId] = { global = time, spells = { [spellName] = time } }
 GameSpells.LastCast = GameSpells.LastCast or {}
-GameSpells.SpamDelay = 200 -- ms
+GameSpells.SpamDelay = 200 -- ms (Per spell)
+GameSpells.GlobalDelay = 50 -- ms (Global spam protection)
 
 -- Time Wrapper (Normalization)
 function GameSpells.getTime()
@@ -36,6 +38,13 @@ function GameSpells.isValidSpell(spellName)
 end
 
 -- Spell Configuration
+-- NOTE: Uses SpellVisuals.Categories if available, otherwise falls back to strings
+local Categories = SpellVisuals and SpellVisuals.Categories or {
+    AIM = "SPELL_AIM",
+    CAST = "SPELL_CAST",
+    CHANNEL = "SPELL_CHANNEL"
+}
+
 GameSpells.Config = {
     ["Hell's Core"] = {
         words = "exevo gran mas flam",
@@ -46,8 +55,9 @@ GameSpells.Config = {
         -- Visual Configuration (Data-Driven)
         visuals = {
             aim = {
-                category = "SPELL_AIM",
+                category = Categories.AIM,
                 attached = {
+                    id = 9001, -- Unique AttachedEffect ID for AIM
                     type = "outfit",
                     thingId = 110, -- Mage Outfit
                     hideOwner = true,
@@ -55,8 +65,9 @@ GameSpells.Config = {
                 }
             },
             cast = {
-                category = "SPELL_CAST",
+                category = Categories.CAST,
                 attached = {
+                    id = 9002, -- Unique AttachedEffect ID for CAST
                     type = "outfit", -- Changed to outfit so it registers dynamically
                     thingId = 111,
                     hideOwner = true, -- Hide original player during cast animation too
@@ -78,6 +89,11 @@ GameSpells.Config = {
     }
 }
 
+-- Ensure PrecomputedEffects are reloaded if Config changes (Hot-Reload support)
+if SpellVisuals and SpellVisuals.reload then
+    SpellVisuals.reload()
+end
+
 -- Function to handle the initial casting process (called from spell script)
 function GameSpells.handleCast(player, variant, spellName)
     local config = GameSpells.Config[spellName]
@@ -85,6 +101,30 @@ function GameSpells.handleCast(player, variant, spellName)
     if not config then
         return true -- Allow normal cast if no config
     end
+
+    -- Global Spam Check
+    local playerId = player:getId()
+    local now = GameSpells.getTime()
+    
+    if not GameSpells.LastCast[playerId] then
+        GameSpells.LastCast[playerId] = { global = 0, spells = {} }
+    end
+    
+    local castData = GameSpells.LastCast[playerId]
+    
+    -- Check Global Delay (prevents alternating spam macros)
+    if (now - castData.global) < GameSpells.GlobalDelay then
+        return false
+    end
+    
+    -- Check Spell Specific Delay
+    if castData.spells[spellName] and (now - castData.spells[spellName]) < GameSpells.SpamDelay then
+        return false
+    end
+    
+    -- Update Timestamps
+    castData.global = now
+    castData.spells[spellName] = now
 
     -- Enter AIM state (Visuals)
     if SpellVisuals then
@@ -108,19 +148,33 @@ end
 function GameSpells.execute(player, spellName, position)
     -- 1. Anti-Spam Check
     local playerId = player:getId()
-    local currentTime = GameSpells.getTime()
+    local now = GameSpells.getTime()
     
+    -- Ensure structure exists (safety)
     if not GameSpells.LastCast[playerId] then
-        GameSpells.LastCast[playerId] = {}
+        GameSpells.LastCast[playerId] = { global = 0, spells = {} }
     end
     
-    local lastCast = GameSpells.LastCast[playerId][spellName] or 0
-    if (currentTime - lastCast) < GameSpells.SpamDelay then
+    local castData = GameSpells.LastCast[playerId]
+    
+    -- Global Delay
+    if (now - castData.global) < GameSpells.GlobalDelay then
         player:sendCancelMessage("You are exhausted.")
         player:getPosition():sendMagicEffect(CONST_ME_POFF)
-        return -- Ignore spam
+        return
     end
-    GameSpells.LastCast[playerId][spellName] = currentTime
+
+    -- Spell Specific Delay
+    local lastCast = castData.spells[spellName] or 0
+    if (now - lastCast) < GameSpells.SpamDelay then
+        player:sendCancelMessage("You are exhausted.")
+        player:getPosition():sendMagicEffect(CONST_ME_POFF)
+        return
+    end
+    
+    -- Update Timestamps
+    castData.global = now
+    castData.spells[spellName] = now
 
     -- 2. Validate Combat exists
     local combat = GameSpells.Combats[spellName]
@@ -158,10 +212,16 @@ function GameSpells.execute(player, spellName, position)
     -- 4. Execute Combat directly
     -- Engine has already validated mana/cooldown/level at the initial cast attempt
     
-    -- Update Visuals: Clear AIM, Enter CAST
+    -- Update Visuals: Enter CAST first, then Clear AIM
+    -- REASON: Minimizes flicker. New effect applies, then old effect is removed.
     if SpellVisuals then
-        SpellVisuals.clear(player, "SPELL_AIM")
+        -- Enter CAST visual state
+        -- Uses SpellVisuals.Categories.CAST if defined, or string "SPELL_CAST"
         SpellVisuals.enter(player, spellName, "cast")
+        
+        -- Clear AIM category
+        -- Uses SpellVisuals.Categories.AIM if defined, or string "SPELL_AIM"
+        SpellVisuals.clear(player, "SPELL_AIM")
     end
 
     local var = Variant(position)
@@ -172,11 +232,18 @@ end
 -- Periodic Cleanup (Garbage Collection for Crashed Players)
 -- ============================================================================
 function GameSpells.cleanupLoop()
+    -- 1. Clean LastCast
     for playerId, _ in pairs(GameSpells.LastCast) do
         if not Player(playerId) then
             GameSpells.LastCast[playerId] = nil
         end
     end
+    
+    -- 2. Clean Orphaned Visuals (if SpellVisuals exists)
+    if SpellVisuals and SpellVisuals.globalSweep then
+        SpellVisuals.globalSweep()
+    end
+    
     addEvent(GameSpells.cleanupLoop, 30 * 60 * 1000) -- Check every 30 minutes
 end
 

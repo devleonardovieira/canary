@@ -61,8 +61,24 @@ gameSpellsHandler:register()
 
 local gameSpellsLogin = CreatureEvent("GameSpellsLogin")
 
+local gameSpellsDeath = CreatureEvent("GameSpellsDeath")
+function gameSpellsDeath.onDeath(player, corpse, killer, mostDamage, unjustified, mostDamage_unjustified)
+    if SpellVisuals then
+        SpellVisuals.cleanup(player)
+    end
+    return true
+end
+gameSpellsDeath:register()
+
 function gameSpellsLogin.onLogin(player)
     player:registerEvent("GameSpellsHandler")
+    player:registerEvent("GameSpellsDeath")
+    
+    -- Pre-register spell visuals (client definitions)
+    if SpellVisuals and SpellVisuals.onLogin then
+        SpellVisuals.onLogin(player)
+    end
+    
     return true
 end
 
@@ -72,11 +88,21 @@ function gameSpellsLogin.onLogout(player)
         GameSpells.LastCast[player:getId()] = nil
     end
     -- Cleanup Visuals
-    if SpellVisuals then
-        SpellVisuals.cleanup(player)
+    if SpellVisuals and SpellVisuals.onLogout then
+        SpellVisuals.onLogout(player)
     end
     return true
 end
+
+-- Removed duplicate onDeath function from gameSpellsLogin table since we use GameSpellsDeath event now
+-- function gameSpellsLogin.onDeath(player, corpse, killer, mostDamage, unjustified, mostDamage_unjustified)
+--     if SpellVisuals then
+--         -- Stop active visuals on death to prevent "ghost" effects
+--         SpellVisuals.cleanup(player)
+--     end
+--     return true
+-- end
+
 
 gameSpellsLogin:register()
 
