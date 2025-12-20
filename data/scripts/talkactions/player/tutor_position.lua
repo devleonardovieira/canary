@@ -10,7 +10,6 @@ end
 tutorPosition:groupType("senior tutor")
 tutorPosition:register()
 
-
 local tutorPosition = TalkAction("!position")
 
 function tutorPosition.onSay(player, words, param)
