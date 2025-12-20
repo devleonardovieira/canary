@@ -43,13 +43,27 @@ GameSpells.Config = {
         tiles = {width = 8, height = 8},
         range = 7,
         group = 2,
-        -- New Casting Config (Outfit/Effect + Properties)
-        castingEffect = {
-            thingId = 110, -- Example: Mage Outfit
-            type = "outfit", -- "outfit" (Creature) or "effect" (Effect)
-            hideOwner = true, -- Replace player
-            loop = -1, -- Infinite loop
-            duration = -1 -- Infinite duration while casting
+        -- Visual Configuration (Data-Driven)
+        visuals = {
+            aim = {
+                category = "SPELL_AIM",
+                attached = {
+                    type = "outfit",
+                    thingId = 110, -- Mage Outfit
+                    hideOwner = true,
+                    speed = 1 -- Speed in ms (control animation speed)
+                }
+            },
+            cast = {
+                category = "SPELL_CAST",
+                attached = {
+                    type = "outfit", -- Changed to outfit so it registers dynamically
+                    thingId = 111,
+                    hideOwner = true, -- Hide original player during cast animation too
+                    speed = 150
+                },
+                duration = 1000 -- Total duration of the cast phase
+            }
         },
         castEffect = 101
     },
@@ -72,13 +86,18 @@ function GameSpells.handleCast(player, variant, spellName)
         return true -- Allow normal cast if no config
     end
 
+    -- Enter AIM state (Visuals)
+    if SpellVisuals then
+        SpellVisuals.enter(player, spellName, "aim")
+    end
+
     local data = {
         action = "request_position",
         spellName = spellName,
         asset = config.asset,
         tiles = config.tiles,
-        range = config.range,
-        castingEffect = config.castingEffect -- Send effect ID to client
+        range = config.range
+        -- castingEffect removed from packet (handled by server-side SpellVisuals)
     }
 
     player:sendExtendedOpcode(GameSpells.OPCODE, json.encode(data))
@@ -139,30 +158,10 @@ function GameSpells.execute(player, spellName, position)
     -- 4. Execute Combat directly
     -- Engine has already validated mana/cooldown/level at the initial cast attempt
     
-    if config and config.castingEffect then
-        local castingEffect = config.castingEffect
-        if castingEffect.type == "outfit" then
-            local currentOutfit = player:getOutfit()
-            player:setOutfit({
-                lookType = castingEffect.thingId,
-                lookHead = currentOutfit.lookHead,
-                lookBody = currentOutfit.lookBody,
-                lookLegs = currentOutfit.lookLegs,
-                lookFeet = currentOutfit.lookFeet,
-                lookAddons = currentOutfit.lookAddons,
-                lookMount = currentOutfit.lookMount
-            })
-            
-            -- Revert outfit after 1 second (adjust as needed)
-            addEvent(function(pid, oldOutfit)
-                local p = Player(pid)
-                if p then 
-                    p:setOutfit(oldOutfit) 
-                end
-            end, 1000, player:getId(), currentOutfit)
-        elseif castingEffect.type == "effect" then
-            player:getPosition():sendMagicEffect(castingEffect.thingId)
-        end
+    -- Update Visuals: Clear AIM, Enter CAST
+    if SpellVisuals then
+        SpellVisuals.clear(player, "SPELL_AIM")
+        SpellVisuals.enter(player, spellName, "cast")
     end
 
     local var = Variant(position)

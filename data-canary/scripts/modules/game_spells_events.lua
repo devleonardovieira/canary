@@ -43,8 +43,10 @@ function gameSpellsHandler.onExtendedOpcode(player, opcode, buffer)
             GameSpells.execute(player, spellName, position)
         end
     elseif action == "cancel" then
-        -- Handle explicit cancel if needed in the future
-        -- e.g. Sync state or cleanup server-side temporary effects
+        -- Handle explicit cancel: Clear AIM visual
+        if SpellVisuals then
+            SpellVisuals.clear(player, "SPELL_AIM")
+        end
         return true
     end
 
@@ -68,6 +70,10 @@ function gameSpellsLogin.onLogout(player)
     -- Clean up Anti-Spam cache
     if GameSpells and GameSpells.LastCast then
         GameSpells.LastCast[player:getId()] = nil
+    end
+    -- Cleanup Visuals
+    if SpellVisuals then
+        SpellVisuals.cleanup(player)
     end
     return true
 end

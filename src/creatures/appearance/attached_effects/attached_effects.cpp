@@ -19,6 +19,7 @@ bool AttachedEffects::reload() {
 	shaders.clear();
 	effects.clear();
 	wings.clear();
+	outfits.clear();
 	return loadFromXml();
 }
 
@@ -59,6 +60,13 @@ bool AttachedEffects::loadFromXml() {
 		));
 	}
 
+	for (auto outfitNode : doc.child("attachedeffects").children("outfit")) {
+		outfits.push_back(std::make_shared<Outfit>(
+			pugi::cast<uint16_t>(outfitNode.attribute("id").value()),
+			outfitNode.attribute("name").as_string()
+		));
+	}
+
 	return true;
 }
 
@@ -88,6 +96,13 @@ std::shared_ptr<Shader> AttachedEffects::getShaderByID(uint8_t id) {
 		return shader->id == id;
 	});
 	return it != shaders.end() ? *it : nullptr;
+}
+
+std::shared_ptr<Outfit> AttachedEffects::getOutfitByID(uint8_t id) {
+	auto it = std::ranges::find_if(outfits.begin(), outfits.end(), [id](const std::shared_ptr<Outfit> &outfit) {
+		return outfit->id == id;
+	});
+	return it != outfits.end() ? *it : nullptr;
 }
 
 std::shared_ptr<Aura> AttachedEffects::getAuraByName(const std::string &name) {
@@ -120,4 +135,12 @@ std::shared_ptr<Wing> AttachedEffects::getWingByName(const std::string &name) {
 		return strcasecmp(wingName, wing->name.c_str()) == 0;
 	});
 	return it != wings.end() ? *it : nullptr;
+}
+
+std::shared_ptr<Outfit> AttachedEffects::getOutfitByName(const std::string &name) {
+	auto outfitName = name.c_str();
+	auto it = std::ranges::find_if(outfits.begin(), outfits.end(), [outfitName](const std::shared_ptr<Outfit> &outfit) {
+		return strcasecmp(outfitName, outfit->name.c_str()) == 0;
+	});
+	return it != outfits.end() ? *it : nullptr;
 }
