@@ -40,8 +40,28 @@ local PrecomputedEffects = nil
 
 function SpellVisuals.reload()
     PrecomputedEffects = nil
-    -- Optional: Re-run precomputation immediately if needed, or wait for next login
-    -- print("[SpellVisuals] Precomputed effects cleared.")
+    RegisteredVisuals = {} -- Invalidate server-side cache to force re-check
+    SpellVisuals.validateConfig()
+end
+
+function SpellVisuals.validateConfig()
+    if not GameSpells or not GameSpells.Config then return end
+    
+    local usedIds = {}
+    for spellName, config in pairs(GameSpells.Config) do
+        if config.visuals then
+            for phase, visualConfig in pairs(config.visuals) do
+                local attached = visualConfig.attached
+                if attached and attached.id then
+                    if usedIds[attached.id] then
+                        print(string.format("[FATAL] [SpellVisuals] DUPLICATE ATTACHED ID: %d used in '%s' (Phase: %s). This ID is already in use!", attached.id, spellName, phase))
+                    else
+                        usedIds[attached.id] = spellName
+                    end
+                end
+            end
+        end
+    end
 end
 
 function SpellVisuals.onLogin(player)
@@ -83,12 +103,11 @@ function SpellVisuals.onLogin(player)
         end
     end
     
-    -- Send Precomputed Effects
-    if GameSpells and GameSpells.OPCODE then
-        for effectId, regData in pairs(PrecomputedEffects) do
-            player:sendExtendedOpcode(GameSpells.OPCODE, json.encode(regData))
-            RegisteredVisuals[playerId][effectId] = true
-        end
+    -- Send Precomputed Effects (LAZY LOAD - Do not send on login to avoid packet overflow)
+    -- We only initialize the tracking table. Actual registration happens in SpellVisuals.enter
+    -- This solves the "starts at 2000" issue.
+    if not RegisteredVisuals[playerId] then
+        RegisteredVisuals[playerId] = {}
     end
 end
 
@@ -117,32 +136,35 @@ function SpellVisuals.enter(player, spellName, phase)
         -- Apply attached effect
         -- Dynamic Registration (Client-Side)
         -- attached.id is the Unique AttachedEffect ID (e.g., 9001)
-        -- attached.thingId is the visual asset ID (e.g., 110)
         
         -- Fallback for legacy configs without 'id'
         local effectId = attached.id or attached.thingId
         
         if attached.type == "outfit" then
              -- Only send registration if NOT already registered for this player
-             -- NOTE: Usually covered by onLogin, but kept as fail-safe for hot-reloads
              if not RegisteredVisuals[playerId][effectId] then
-                 -- Prepare config for client, including duration if available
-                 local clientConfig = {}
-                 for k, v in pairs(attached) do
-                     clientConfig[k] = v
-                 end
                  
-                 -- Inject duration from visualConfig if not explicitly set in attached config
-                 if not clientConfig.duration and visualConfig.duration then
-                     clientConfig.duration = visualConfig.duration
+                 -- Use Precomputed packet if available (Performance Optimization)
+                 local regData
+                 if PrecomputedEffects and PrecomputedEffects[effectId] then
+                     regData = PrecomputedEffects[effectId]
+                 else
+                     -- Fallback: Construct packet on the fly (should rarely happen if precomputed)
+                     local clientConfig = {}
+                     for k, v in pairs(attached) do
+                         clientConfig[k] = v
+                     end
+                     if not clientConfig.duration and visualConfig.duration then
+                         clientConfig.duration = visualConfig.duration
+                     end
+                     regData = {
+                         action = "register_effect",
+                         id = effectId,
+                         name = "DynamicOutfit_" .. effectId,
+                         config = clientConfig
+                     }
                  end
-    
-                 local regData = {
-                     action = "register_effect",
-                     id = effectId, -- Use Unique AttachedEffect ID
-                     name = "DynamicOutfit_" .. effectId,
-                     config = clientConfig
-                 }
+
                  -- Send opcode 50 (GameSpells.OPCODE)
                  if GameSpells and GameSpells.OPCODE then
                     player:sendExtendedOpcode(GameSpells.OPCODE, json.encode(regData))
@@ -165,6 +187,13 @@ function SpellVisuals.enter(player, spellName, phase)
              
              -- Update Token (Versioning)
              entry.token = (entry.token or 0) + 1
+             
+             -- Hard-stop timestamp for globalSweep
+             if visualConfig.duration and visualConfig.duration > 0 then
+                 entry.endTime = os.time() + math.ceil(visualConfig.duration / 1000)
+             else
+                 entry.endTime = nil
+             end
              
              -- Schedule cleanup if duration is set
              if visualConfig.duration and visualConfig.duration > 0 then
@@ -214,12 +243,21 @@ end
 
 -- Global cleanup for orphaned visuals (called periodically or on heavy reloads)
 function SpellVisuals.globalSweep()
-    for playerId, data in pairs(ActiveVisuals) do
+    local now = os.time()
+    for playerId, categories in pairs(ActiveVisuals) do
         local p = Player(playerId)
         if not p then
             -- Player no longer exists, but table remains -> Clean it
             ActiveVisuals[playerId] = nil
             RegisteredVisuals[playerId] = nil
+        else
+            -- Check for stuck effects (Hard-stop)
+            for cat, entry in pairs(categories) do
+                if entry.endTime and now > (entry.endTime + 5) then -- 5s tolerance
+                    -- Force cleanup if event failed
+                    SpellVisuals.clear(p, cat)
+                end
+            end
         end
     end
     
