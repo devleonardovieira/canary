@@ -2,18 +2,18 @@ SpellVisuals = {}
 
 -- Categories
 SpellVisuals.Categories = {
-    AIM = "SPELL_AIM",
-    CAST = "SPELL_CAST",
-    CHANNEL = "SPELL_CHANNEL",
-    BUFF = "BUFF",
-    STANCE = "STANCE"
+	AIM = "SPELL_AIM",
+	CAST = "SPELL_CAST",
+	CHANNEL = "SPELL_CHANNEL",
+	BUFF = "BUFF",
+	STANCE = "STANCE",
 }
 
 -- ============================================================================
 -- DOCUMENTATION: ATTACHED EFFECT CONFIGURATION
 -- ============================================================================
 -- The 'attached' table in GameSpells.Config defines the visual effect.
--- 
+--
 -- KEY CONCEPTS:
 -- 1. id (REQUIRED): A Unique Global ID for the effect definition.
 --    - MUST be unique across the entire server.
@@ -34,7 +34,7 @@ SpellVisuals.Categories = {
 local ActiveVisuals = {}
 
 -- Storage: RegisteredVisuals[playerId][attachedId] = true
-local RegisteredVisuals = {} 
+local RegisteredVisuals = {}
 
 local PrecomputedEffects = nil
 
@@ -217,28 +217,30 @@ function SpellVisuals.enter(player, spellName, phase)
 end
 
 function SpellVisuals.clear(player, category)
-    local playerId = player:getId()
-    if not ActiveVisuals[playerId] then return end
-    
-    local entry = ActiveVisuals[playerId][category]
-    if entry then
-        -- Cancel pending cleanup event (Safe Check)
-        if entry.eventId then
-            -- Note: stopEvent handles nil/invalid IDs gracefully in most engines,
-            -- but explicit check is good practice.
-            stopEvent(entry.eventId)
-        end
-        entry.eventId = nil
-        entry.token = nil
-        
-        -- Detach effect
-        if entry.effectId then
-            player:detachEffectById(entry.effectId)
-            entry.effectId = nil
-        end
-        
-        ActiveVisuals[playerId][category] = nil
-    end
+	local playerId = player:getId()
+	if not ActiveVisuals[playerId] then
+		return
+	end
+
+	local entry = ActiveVisuals[playerId][category]
+	if entry then
+		-- Cancel pending cleanup event (Safe Check)
+		if entry.eventId then
+			-- Note: stopEvent handles nil/invalid IDs gracefully in most engines,
+			-- but explicit check is good practice.
+			stopEvent(entry.eventId)
+		end
+		entry.eventId = nil
+		entry.token = nil
+
+		-- Detach effect
+		if entry.effectId then
+			player:detachEffectById(entry.effectId)
+			entry.effectId = nil
+		end
+
+		ActiveVisuals[playerId][category] = nil
+	end
 end
 
 -- Global cleanup for orphaned visuals (called periodically or on heavy reloads)
@@ -270,20 +272,22 @@ function SpellVisuals.globalSweep()
 end
 
 function SpellVisuals.cleanup(player)
-    local playerId = player:getId()
-    if not ActiveVisuals[playerId] then return end
-    
-    for category, _ in pairs(ActiveVisuals[playerId]) do
-        SpellVisuals.clear(player, category)
-    end
-    ActiveVisuals[playerId] = nil
-    -- RegisteredVisuals[playerId] = nil -- REMOVED: Keep cache for session resilience. Cleared on onLogout.
+	local playerId = player:getId()
+	if not ActiveVisuals[playerId] then
+		return
+	end
+
+	for category, _ in pairs(ActiveVisuals[playerId]) do
+		SpellVisuals.clear(player, category)
+	end
+	ActiveVisuals[playerId] = nil
+	-- RegisteredVisuals[playerId] = nil -- REMOVED: Keep cache for session resilience. Cleared on onLogout.
 end
 
 function SpellVisuals.onLogout(player)
-    SpellVisuals.cleanup(player)
-    local playerId = player:getId()
-    RegisteredVisuals[playerId] = nil
+	SpellVisuals.cleanup(player)
+	local playerId = player:getId()
+	RegisteredVisuals[playerId] = nil
 end
 
 return SpellVisuals

@@ -1,4 +1,3 @@
-
 local tutorPosition = TalkAction("!teste")
 
 function tutorPosition.onSay(player, words, param)
