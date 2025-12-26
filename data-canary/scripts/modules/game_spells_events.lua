@@ -29,52 +29,51 @@ function gameSpellsHandler.onExtendedOpcode(player, opcode, buffer)
 		json_data = result
 	end
 
-    local action = json_data.action
-    if action == "cast" then
-        local spellName = json_data.spellName
-        local posData = json_data.position
-        
-        if spellName and posData then
-            if not GameSpells.isValidSpell(spellName) then
-                 player:sendCancelMessage("Spell not configured in GameSpells.Config.")
-                 return true -- Invalid spell attempt
-            end
-            local position = Position(posData.x, posData.y, posData.z)
-            
-            -- Validate Range (Basic Check)
-            -- More complex checks (walls, etc) should be done here if needed
-            if player:getPosition():getDistance(position) > 10 then -- Hardcap sanity check
-                 return true
-            end
+	local action = json_data.action
+	if action == "cast" then
+		local spellName = json_data.spellName
+		local posData = json_data.position
 
-            -- Execute the spell
-            local combat = GameSpells.Combats[spellName]
-            if combat then
-                 -- Clear AIM visual
-                 if SpellVisuals and SpellVisuals.Categories then
-                     SpellVisuals.clear(player, SpellVisuals.Categories.AIM)
-                     -- Enter CAST visual (Server-Side Trigger)
-                     -- Note: "cast" here refers to the CONFIG KEY in GameSpells.lua, not the category enum
-                     SpellVisuals.enter(player, spellName, "cast")
-                 end
+		if spellName and posData then
+			if not GameSpells.isValidSpell(spellName) then
+				player:sendCancelMessage("Spell not configured in GameSpells.Config.")
+				return true -- Invalid spell attempt
+			end
+			local position = Position(posData.x, posData.y, posData.z)
 
-                 local variant = Variant(position)
-                 combat:execute(player, variant)
-                 
-                 -- Update LastCast (Success)
-                 if GameSpells.LastCast[player:getId()] then
-                     GameSpells.LastCast[player:getId()].spells[spellName] = GameSpells.getTime()
-                 end
-            end
-        end
-        return true
-        
-    elseif action == "cancel_aim" then
-        if SpellVisuals and SpellVisuals.Categories then
-            SpellVisuals.clear(player, SpellVisuals.Categories.AIM)
-        end
-        return true
-    end
+			-- Validate Range (Basic Check)
+			-- More complex checks (walls, etc) should be done here if needed
+			if player:getPosition():getDistance(position) > 10 then -- Hardcap sanity check
+				return true
+			end
+
+			-- Execute the spell
+			local combat = GameSpells.Combats[spellName]
+			if combat then
+				-- Clear AIM visual
+				if SpellVisuals and SpellVisuals.Categories then
+					SpellVisuals.clear(player, SpellVisuals.Categories.AIM)
+					-- Enter CAST visual (Server-Side Trigger)
+					-- Note: "cast" here refers to the CONFIG KEY in GameSpells.lua, not the category enum
+					SpellVisuals.enter(player, spellName, "cast")
+				end
+
+				local variant = Variant(position)
+				combat:execute(player, variant)
+
+				-- Update LastCast (Success)
+				if GameSpells.LastCast[player:getId()] then
+					GameSpells.LastCast[player:getId()].spells[spellName] = GameSpells.getTime()
+				end
+			end
+		end
+		return true
+	elseif action == "cancel_aim" then
+		if SpellVisuals and SpellVisuals.Categories then
+			SpellVisuals.clear(player, SpellVisuals.Categories.AIM)
+		end
+		return true
+	end
 
 	if spellName and posData then
 		if not GameSpells.isValidSpell(spellName) then
