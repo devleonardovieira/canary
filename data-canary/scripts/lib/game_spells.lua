@@ -50,7 +50,7 @@ GameSpells.Config = {
 		words = "exevo gran mas flam",
 		asset = "images/clienticon.png", -- Now points to the single tile icon
 		tiles = { width = 1, height = 1 }, -- Single tile size
-		area = "AREA_CIRCLE5X5", 
+		area = "AREA_CIRCLE5X5",
 		areaEffect = "data/images/clienticon.png", -- Custom Area Image for post-cast effect
 		areaEffectDuration = 2000,
 		selfCentered = false, -- Spell is cast around the player
@@ -115,7 +115,9 @@ local function getOffsetsFromArea(area)
 				break
 			end
 		end
-		if foundCenter then break end
+		if foundCenter then
+			break
+		end
 	end
 
 	if not foundCenter then
@@ -128,7 +130,7 @@ local function getOffsetsFromArea(area)
 			if val ~= 0 then
 				offsets[#offsets + 1] = {
 					x = x - centerX,
-					y = y - centerY
+					y = y - centerY,
 				}
 			end
 		end
@@ -167,7 +169,7 @@ function GameSpells.handleCast(player, variant, spellName)
 	if SpellVisuals then
 		SpellVisuals.enter(player, spellName, "aim")
 	end
-	
+
 	-- Calculate Area Offsets if area is defined
 	local areaOffsets = nil
 	if config.area then
@@ -175,7 +177,7 @@ function GameSpells.handleCast(player, variant, spellName)
 		if type(areaTable) == "string" then
 			areaTable = _G[areaTable]
 		end
-		
+
 		if type(areaTable) == "table" then
 			areaOffsets = getOffsetsFromArea(areaTable)
 		end
