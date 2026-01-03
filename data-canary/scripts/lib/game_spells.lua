@@ -48,8 +48,12 @@ local Categories = SpellVisuals and SpellVisuals.Categories or {
 GameSpells.Config = {
 	["Hell's Core"] = {
 		words = "exevo gran mas flam",
-		asset = "/images/spell_assets/Lightning - 15 ft. radius - 8x8.png",
-		tiles = { width = 8, height = 8 },
+		asset = "images/clienticon.png", -- Now points to the single tile icon
+		tiles = { width = 1, height = 1 }, -- Single tile size
+		area = "AREA_CIRCLE5X5", 
+		areaEffect = "data/images/clienticon.png", -- Custom Area Image for post-cast effect
+		areaEffectDuration = 2000,
+		selfCentered = false, -- Spell is cast around the player
 		range = 7,
 		group = 2,
 		-- Visual Configuration (Data-Driven)
@@ -94,6 +98,45 @@ if SpellVisuals and SpellVisuals.reload then
 	SpellVisuals.reload()
 end
 
+-- Helper: Convert Area Matrix to Offsets
+local function getOffsetsFromArea(area)
+	local offsets = {}
+	local centerX, centerY
+	local foundCenter = false
+
+	local height = #area
+	local width = height > 0 and #area[1] or 0
+
+	for y, row in ipairs(area) do
+		for x, val in ipairs(row) do
+			if val == 3 then
+				centerX, centerY = x, y
+				foundCenter = true
+				break
+			end
+		end
+		if foundCenter then break end
+	end
+
+	if not foundCenter then
+		centerX = math.ceil(width / 2)
+		centerY = math.ceil(height / 2)
+	end
+
+	for y, row in ipairs(area) do
+		for x, val in ipairs(row) do
+			if val ~= 0 then
+				offsets[#offsets + 1] = {
+					x = x - centerX,
+					y = y - centerY
+				}
+			end
+		end
+	end
+
+	return offsets
+end
+
 -- Function to handle the initial casting process (called from spell script)
 function GameSpells.handleCast(player, variant, spellName)
 	local config = GameSpells.Config[spellName]
@@ -117,18 +160,25 @@ function GameSpells.handleCast(player, variant, spellName)
 		return false
 	end
 
-	-- Check Spell Specific Delay
-	if castData.spells[spellName] and (now - castData.spells[spellName]) < GameSpells.SpamDelay then
-		return false
-	end
-
 	-- Update Timestamps
 	castData.global = now
-	castData.spells[spellName] = now
 
 	-- Enter AIM state (Visuals)
 	if SpellVisuals then
 		SpellVisuals.enter(player, spellName, "aim")
+	end
+	
+	-- Calculate Area Offsets if area is defined
+	local areaOffsets = nil
+	if config.area then
+		local areaTable = config.area
+		if type(areaTable) == "string" then
+			areaTable = _G[areaTable]
+		end
+		
+		if type(areaTable) == "table" then
+			areaOffsets = getOffsetsFromArea(areaTable)
+		end
 	end
 
 	local data = {
@@ -137,6 +187,7 @@ function GameSpells.handleCast(player, variant, spellName)
 		asset = config.asset,
 		tiles = config.tiles,
 		range = config.range,
+		areaOffsets = areaOffsets,
 		-- castingEffect removed from packet (handled by server-side SpellVisuals)
 	}
 
@@ -207,6 +258,26 @@ function GameSpells.execute(player, spellName, position)
 			player:getPosition():sendMagicEffect(CONST_ME_POFF)
 			return
 		end
+
+		-- Extended Area Visibility Check
+		if config.area then
+			local areaTable = config.area
+			if type(areaTable) == "string" then
+				areaTable = _G[areaTable]
+			end
+
+			if type(areaTable) == "table" then
+				local areaOffsets = getOffsetsFromArea(areaTable)
+				for _, offset in ipairs(areaOffsets) do
+					local checkPos = Position(position.x + offset.x, position.y + offset.y, position.z)
+					if not playerPos:isSightClear(checkPos) then
+						player:sendCancelMessage("You cannot see the target area.")
+						player:getPosition():sendMagicEffect(CONST_ME_POFF)
+						return
+					end
+				end
+			end
+		end
 	end
 
 	-- 4. Execute Combat directly
@@ -234,7 +305,7 @@ end
 function GameSpells.cleanupLoop()
 	-- 1. Clean LastCast
 	for playerId, _ in pairs(GameSpells.LastCast) do
-		if not Player(playerId) then
+		if not playerId or not Player(playerId) then
 			GameSpells.LastCast[playerId] = nil
 		end
 	end
