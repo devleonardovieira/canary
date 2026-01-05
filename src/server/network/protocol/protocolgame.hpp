@@ -348,8 +348,6 @@ private:
 	void sendTextMessage(const TextMessage &message);
 	void sendReLoginWindow(uint8_t unfairFightReduction);
 
-	void sendRemoteMove(const Position &fromPos, const Position &toPos);
-
 	void sendTutorial(uint8_t tutorialId);
 	void sendAddMarker(const Position &pos, uint8_t markType, const std::string &desc);
 

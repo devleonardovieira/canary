@@ -262,13 +262,6 @@ class PlayerFunctions {
 	static int luaPlayerGetHouse(lua_State* L);
 	static int luaPlayerSendHouseWindow(lua_State* L);
 	static int luaPlayerSetEditHouse(lua_State* L);
-	
-	static int luaPlayerSetRemoteViewPosition(lua_State* L);
-	static int luaPlayerRemoveRemoteViewPosition(lua_State* L);
-	static int luaPlayerGetRemoteViewPosition(lua_State* L);
-
-	static int luaPlayerAddCameraSpectator(lua_State* L);
-	static int luaPlayerRemoveCameraSpectator(lua_State* L);
 
 	static int luaPlayerSetGhostMode(lua_State* L);
 
