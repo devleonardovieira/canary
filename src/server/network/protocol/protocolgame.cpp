@@ -1656,7 +1656,11 @@ bool ProtocolGame::canSee(int32_t x, int32_t y, int32_t z) const {
 		return false;
 	}
 
-	const Position &myPos = player->getPosition();
+	Position myPos = player->getPosition();
+	if (auto remotePos = player->getRemoteViewPosition()) {
+		myPos = *remotePos;
+	}
+
 	if (myPos.z <= MAP_INIT_SURFACE_LAYER) {
 		// we are on ground level or above (7 -> 0)
 		// view is from 7 -> 0
@@ -6984,8 +6988,13 @@ void ProtocolGame::sendFYIBox(const std::string &message) {
 void ProtocolGame::sendMapDescription(const Position &pos) {
 	NetworkMessage msg;
 	msg.addByte(0x64);
-	msg.addPosition(player->getPosition());
-	GetMapDescription(pos.x - MAP_MAX_CLIENT_VIEW_PORT_X, pos.y - MAP_MAX_CLIENT_VIEW_PORT_Y, pos.z, (MAP_MAX_CLIENT_VIEW_PORT_X + 1) * 2, (MAP_MAX_CLIENT_VIEW_PORT_Y + 1) * 2, msg);
+	if (auto remotePos = player->getRemoteViewPosition()) {
+		msg.addPosition(*remotePos);
+		GetMapDescription(remotePos->x - MAP_MAX_CLIENT_VIEW_PORT_X, remotePos->y - MAP_MAX_CLIENT_VIEW_PORT_Y, remotePos->z, (MAP_MAX_CLIENT_VIEW_PORT_X + 1) * 2, (MAP_MAX_CLIENT_VIEW_PORT_Y + 1) * 2, msg);
+	} else {
+		msg.addPosition(player->getPosition());
+		GetMapDescription(pos.x - MAP_MAX_CLIENT_VIEW_PORT_X, pos.y - MAP_MAX_CLIENT_VIEW_PORT_Y, pos.z, (MAP_MAX_CLIENT_VIEW_PORT_X + 1) * 2, (MAP_MAX_CLIENT_VIEW_PORT_Y + 1) * 2, msg);
+	}
 	writeToOutputBuffer(msg);
 }
 
@@ -7314,6 +7323,40 @@ void ProtocolGame::sendMoveCreature(const std::shared_ptr<Creature> &creature, c
 		sendRemoveTileThing(oldPos, oldStackPos);
 	} else if (canSee(newPos)) {
 		sendAddCreature(creature, newPos, newStackPos, false);
+	}
+}
+
+void ProtocolGame::sendRemoteMove(const Position &oldPos, const Position &newPos) {
+	if (oldPos.z != newPos.z) {
+		sendMapDescription(newPos);
+		return;
+	}
+
+	NetworkMessage msg;
+	bool scroll = false;
+
+	if (oldPos.y > newPos.y) { // north, for old x
+		msg.addByte(0x65);
+		GetMapDescription(oldPos.x - MAP_MAX_CLIENT_VIEW_PORT_X, newPos.y - MAP_MAX_CLIENT_VIEW_PORT_Y, newPos.z, (MAP_MAX_CLIENT_VIEW_PORT_X + 1) * 2, 1, msg);
+		scroll = true;
+	} else if (oldPos.y < newPos.y) { // south, for old x
+		msg.addByte(0x67);
+		GetMapDescription(oldPos.x - MAP_MAX_CLIENT_VIEW_PORT_X, newPos.y + (MAP_MAX_CLIENT_VIEW_PORT_Y + 1), newPos.z, (MAP_MAX_CLIENT_VIEW_PORT_X + 1) * 2, 1, msg);
+		scroll = true;
+	}
+
+	if (oldPos.x < newPos.x) { // east, [with new y]
+		msg.addByte(0x66);
+		GetMapDescription(newPos.x + (MAP_MAX_CLIENT_VIEW_PORT_X + 1), newPos.y - MAP_MAX_CLIENT_VIEW_PORT_Y, newPos.z, 1, (MAP_MAX_CLIENT_VIEW_PORT_Y + 1) * 2, msg);
+		scroll = true;
+	} else if (oldPos.x > newPos.x) { // west, [with new y]
+		msg.addByte(0x68);
+		GetMapDescription(newPos.x - MAP_MAX_CLIENT_VIEW_PORT_X, newPos.y - MAP_MAX_CLIENT_VIEW_PORT_Y, newPos.z, 1, (MAP_MAX_CLIENT_VIEW_PORT_Y + 1) * 2, msg);
+		scroll = true;
+	}
+
+	if (scroll) {
+		writeToOutputBuffer(msg);
 	}
 }
 

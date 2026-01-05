@@ -1332,6 +1332,18 @@ bool Player::canSeeCreature(const std::shared_ptr<Creature> &creature) const {
 	return true;
 }
 
+void Player::setRemoteViewPosition(const Position &pos) {
+	remoteViewPosition = pos;
+}
+
+void Player::removeRemoteViewPosition() {
+	remoteViewPosition = std::nullopt;
+}
+
+std::optional<Position> Player::getRemoteViewPosition() const {
+	return remoteViewPosition;
+}
+
 bool Player::canWalkthrough(const std::shared_ptr<Creature> &creature) {
 	if (group->access || creature->isInGhostMode()) {
 		return true;
@@ -2005,6 +2017,12 @@ void Player::sendCancelMessage(const std::string &msg) const {
 
 void Player::sendCancelMessage(ReturnValue message) const {
 	sendCancelMessage(getReturnMessage(message));
+}
+
+void Player::sendMapDescription(const Position &pos) const {
+	if (client) {
+		client->sendMapDescription(pos);
+	}
 }
 
 void Player::sendCancelTarget() const {
@@ -2752,10 +2770,66 @@ void Player::onWalk(Direction &dir) {
 		}
 	}
 
+	Position oldPos = getPosition();
 	Creature::onWalk(dir);
 	setNextActionTask(nullptr);
 
+	if (!cameraSpectators.empty()) {
+		Position newPos = getPosition();
+		// Only notify if position actually changed
+		if (oldPos != newPos) {
+			for (auto it = cameraSpectators.begin(); it != cameraSpectators.end();) {
+				auto spectator = g_game().getPlayerByGUID(*it);
+				if (spectator) {
+					// Update the remote view position on the spectator
+					spectator->setRemoteViewPosition(newPos);
+					// Send the move packet to update the map
+					spectator->sendRemoteMove(oldPos, newPos);
+					++it;
+				} else {
+					it = cameraSpectators.erase(it);
+				}
+			}
+		}
+	}
+
 	g_callbacks().executeCallback(EventCallback_t::playerOnWalk, &EventCallback::playerOnWalk, getPlayer(), dir);
+}
+
+void Player::addCameraSpectator(uint32_t guid) {
+	cameraSpectators.insert(guid);
+}
+
+void Player::removeCameraSpectator(uint32_t guid) {
+	cameraSpectators.erase(guid);
+}
+
+void Player::sendRemoteMove(const Position& fromPos, const Position& toPos) {
+	if (client) {
+		// Calculate the direction of the move for the scroll
+		int x_diff = toPos.x - fromPos.x;
+		int y_diff = toPos.y - fromPos.y;
+		int z_diff = toPos.z - fromPos.z;
+
+		// Standard Tibia client supports map scrolling for X/Y movement.
+		// For Z movement (floors), we usually need a full map description.
+		if (z_diff != 0) {
+			client->sendMapDescription(toPos);
+		} else {
+			// For lateral movement, we can try to send a move creature packet if we are faking it,
+			// or we can send the map slice. 
+			// Since there is no "creature" moving on the spectator's client (the camera is disembodied),
+			// we must send the map data that comes into view.
+			
+			// ProtocolGame::MoveCreature logic normally handles this for the player itself.
+			// Here we need to manually invoke the map sending logic.
+			
+			// If we look at ProtocolGame::sendMoveCreature, it sends the map description for the new area.
+			// We can implement a similar function or expose one.
+			// For now, let's call a new method on ProtocolGame or reuse existing logic.
+			client->sendRemoteMove(fromPos, toPos);
+		}
+	}
 }
 
 void Player::checkTradeState(const std::shared_ptr<Item> &item) {

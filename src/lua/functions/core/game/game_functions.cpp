@@ -85,6 +85,7 @@ void GameFunctions::init(lua_State* L) {
 	Lua::registerMethod(L, "Game", "hasDistanceEffect", GameFunctions::luaGameHasDistanceEffect);
 	Lua::registerMethod(L, "Game", "hasEffect", GameFunctions::luaGameHasEffect);
 	Lua::registerMethod(L, "Game", "getOfflinePlayer", GameFunctions::luaGameGetOfflinePlayer);
+	Lua::registerMethod(L, "Game", "getPlayerByGUID", GameFunctions::luaGameGetPlayerByGUID);
 	Lua::registerMethod(L, "Game", "getNormalizedPlayerName", GameFunctions::luaGameGetNormalizedPlayerName);
 	Lua::registerMethod(L, "Game", "getNormalizedGuildName", GameFunctions::luaGameGetNormalizedGuildName);
 
@@ -783,6 +784,19 @@ int GameFunctions::luaGameGetOfflinePlayer(lua_State* L) {
 		Lua::setMetatable(L, -1, "Player");
 	}
 
+	return 1;
+}
+
+int GameFunctions::luaGameGetPlayerByGUID(lua_State* L) {
+	// Game.getPlayerByGUID(guid)
+	const uint32_t guid = Lua::getNumber<uint32_t>(L, 1);
+	const auto &player = g_game().getPlayerByGUID(guid, false);
+	if (player) {
+		Lua::pushUserdata<Player>(L, player);
+		Lua::setMetatable(L, -1, "Player");
+	} else {
+		lua_pushnil(L);
+	}
 	return 1;
 }
 

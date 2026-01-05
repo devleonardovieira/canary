@@ -275,8 +275,19 @@ void PlayerFunctions::init(lua_State* L) {
 	Lua::registerMethod(L, "Player", "getHouse", PlayerFunctions::luaPlayerGetHouse);
 	Lua::registerMethod(L, "Player", "sendHouseWindow", PlayerFunctions::luaPlayerSendHouseWindow);
 	Lua::registerMethod(L, "Player", "setEditHouse", PlayerFunctions::luaPlayerSetEditHouse);
+	
+	Lua::registerMethod(L, "Player", "setRemoteViewPosition", PlayerFunctions::luaPlayerSetRemoteViewPosition);
+	Lua::registerMethod(L, "Player", "removeRemoteViewPosition", PlayerFunctions::luaPlayerRemoveRemoteViewPosition);
+	Lua::registerMethod(L, "Player", "getRemoteViewPosition", PlayerFunctions::luaPlayerGetRemoteViewPosition);
+
+	Lua::registerMethod(L, "Player", "addCameraSpectator", PlayerFunctions::luaPlayerAddCameraSpectator);
+	Lua::registerMethod(L, "Player", "removeCameraSpectator", PlayerFunctions::luaPlayerRemoveCameraSpectator);
 
 	Lua::registerMethod(L, "Player", "setGhostMode", PlayerFunctions::luaPlayerSetGhostMode);
+
+	Lua::registerMethod(L, "Player", "setRemoteViewPosition", PlayerFunctions::luaPlayerSetRemoteViewPosition);
+	Lua::registerMethod(L, "Player", "removeRemoteViewPosition", PlayerFunctions::luaPlayerRemoveRemoteViewPosition);
+	Lua::registerMethod(L, "Player", "getRemoteViewPosition", PlayerFunctions::luaPlayerGetRemoteViewPosition);
 
 	Lua::registerMethod(L, "Player", "getContainerId", PlayerFunctions::luaPlayerGetContainerId);
 	Lua::registerMethod(L, "Player", "getContainerById", PlayerFunctions::luaPlayerGetContainerById);
@@ -3440,6 +3451,74 @@ int PlayerFunctions::luaPlayerSetEditHouse(lua_State* L) {
 	const uint32_t listId = Lua::getNumber<uint32_t>(L, 3);
 	player->setEditHouse(house, listId);
 	Lua::pushBoolean(L, true);
+	return 1;
+}
+
+int PlayerFunctions::luaPlayerSetRemoteViewPosition(lua_State* L) {
+	// player:setRemoteViewPosition(position)
+	const auto &player = Lua::getUserdataShared<Player>(L, 1, "Player");
+	if (player) {
+		const Position &pos = Lua::getPosition(L, 2);
+		player->setRemoteViewPosition(pos);
+		player->sendMapDescription(pos);
+		Lua::pushBoolean(L, true);
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int PlayerFunctions::luaPlayerRemoveRemoteViewPosition(lua_State* L) {
+	// player:removeRemoteViewPosition()
+	const auto &player = Lua::getUserdataShared<Player>(L, 1, "Player");
+	if (player) {
+		player->removeRemoteViewPosition();
+		player->sendMapDescription(player->getPosition());
+		Lua::pushBoolean(L, true);
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int PlayerFunctions::luaPlayerGetRemoteViewPosition(lua_State* L) {
+	// player:getRemoteViewPosition()
+	const auto &player = Lua::getUserdataShared<Player>(L, 1, "Player");
+	if (player) {
+		if (auto pos = player->getRemoteViewPosition()) {
+			Lua::pushPosition(L, *pos);
+		} else {
+			lua_pushnil(L);
+		}
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int PlayerFunctions::luaPlayerAddCameraSpectator(lua_State* L) {
+	// player:addCameraSpectator(spectatorId)
+	const auto &player = Lua::getUserdataShared<Player>(L, 1, "Player");
+	if (player) {
+		const uint32_t spectatorId = Lua::getNumber<uint32_t>(L, 2);
+		player->addCameraSpectator(spectatorId);
+		Lua::pushBoolean(L, true);
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int PlayerFunctions::luaPlayerRemoveCameraSpectator(lua_State* L) {
+	// player:removeCameraSpectator(spectatorId)
+	const auto &player = Lua::getUserdataShared<Player>(L, 1, "Player");
+	if (player) {
+		const uint32_t spectatorId = Lua::getNumber<uint32_t>(L, 2);
+		player->removeCameraSpectator(spectatorId);
+		Lua::pushBoolean(L, true);
+	} else {
+		lua_pushnil(L);
+	}
 	return 1;
 }
 

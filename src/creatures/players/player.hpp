@@ -16,6 +16,7 @@
 #include "items/cylinder.hpp"
 #include "game/movement/position.hpp"
 #include "creatures/creatures_definitions.hpp"
+#include <optional>
 
 // Player components are decoupled to reduce complexity. Keeping includes here aids in clarity and maintainability, but avoid including player.hpp in headers to prevent circular dependencies.
 #include "creatures/players/animus_mastery/animus_mastery.hpp"
@@ -882,6 +883,18 @@ public:
 
 	void sendCancelMessage(const std::string &msg) const;
 	void sendCancelMessage(ReturnValue message) const;
+	void sendMapDescription(const Position &pos) const;
+	void sendRemoteMove(const Position &oldPos, const Position &newPos);
+
+	void setRemoteViewPosition(const Position &pos);
+
+	void removeRemoteViewPosition();
+
+	std::optional<Position> getRemoteViewPosition() const;
+
+	void addCameraSpectator(uint32_t spectatorId);
+	void removeCameraSpectator(uint32_t spectatorId);
+
 	void sendCancelTarget() const;
 	void sendCancelWalk() const;
 	void sendChangeSpeed(const std::shared_ptr<Creature> &creature, uint16_t newSpeed) const;
@@ -1496,8 +1509,10 @@ private:
 	Skill skills[SKILL_LAST + 1];
 	LightInfo itemsLight;
 	Position loginPosition;
+	std::optional<Position> remoteViewPosition;
+	std::unordered_set<uint32_t> cameraSpectators;
 	Position lastWalkthroughPosition;
-
+	
 	time_t lastLoginSaved = 0;
 	time_t lastLogout = 0;
 
