@@ -83,7 +83,7 @@ public:
 	// Controle
 	void setMode(SpecialResourceMode newMode);
 	SpecialResourceMode getMode() const;
-	
+
 	void setPaused(SpecialResourcePauseState flags);
 	void removePaused(SpecialResourcePauseState flags);
 	bool isPaused(SpecialResourcePauseState flag) const;

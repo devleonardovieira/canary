@@ -289,7 +289,6 @@ void IOLoginData::saveOnlyDataForOnlinePlayer(const std::shared_ptr<Player> &pla
 	player->wheel().saveKVScrolls();
 	player->saveSpecialResource();
 
-
 	if (!IOLoginDataSave::savePlayerStorage(player)) {
 		throw DatabaseException("[IOLoginDataSave::savePlayerStorage] - Failed to save player storage: " + player->getName());
 	}

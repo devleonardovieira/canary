@@ -1549,7 +1549,7 @@ int PlayerFunctions::luaPlayerIsSpecialResourcePaused(lua_State* L) {
 		lua_pushnil(L);
 		return 1;
 	}
-	
+
 	SpecialResourcePauseState flag = SpecialResourcePauseState::ALL;
 	if (lua_gettop(L) >= 2) {
 		flag = static_cast<SpecialResourcePauseState>(Lua::getNumber<uint8_t>(L, 2, 0));
