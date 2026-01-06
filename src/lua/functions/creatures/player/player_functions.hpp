@@ -397,5 +397,23 @@ class PlayerFunctions {
 	static int luaPlayerAddCustomOutfit(lua_State* L);
 	static int luaPlayerRemoveCustomOutfit(lua_State* L);
 
+	// Special Resource
+	static int luaPlayerHasSpecialResource(lua_State* L);
+	static int luaPlayerGetSpecialResourceName(lua_State* L);
+	static int luaPlayerGetSpecialResourceValue(lua_State* L);
+	static int luaPlayerGetSpecialResourceMax(lua_State* L);
+	static int luaPlayerGetSpecialResourceState(lua_State* L);
+	static int luaPlayerAddSpecialResource(lua_State* L);
+	static int luaPlayerRemoveSpecialResource(lua_State* L);
+	static int luaPlayerSetSpecialResourceMode(lua_State* L);
+	static int luaPlayerGetSpecialResourceMode(lua_State* L);
+	static int luaPlayerSetSpecialResourcePaused(lua_State* L);
+	static int luaPlayerRemoveSpecialResourcePaused(lua_State* L);
+	static int luaPlayerIsSpecialResourcePaused(lua_State* L);
+	static int luaPlayerSetSpecialResourceRegen(lua_State* L);
+	static int luaPlayerGetSpecialResourceRegen(lua_State* L);
+	static int luaPlayerSetSpecialResourceDrain(lua_State* L);
+	static int luaPlayerGetSpecialResourceDrain(lua_State* L);
+
 	friend class CreatureFunctions;
 };

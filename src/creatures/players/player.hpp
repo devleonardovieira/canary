@@ -28,6 +28,7 @@
 #include "creatures/players/components/player_vip.hpp"
 #include "creatures/players/components/wheel/wheel_gems.hpp"
 #include "creatures/players/components/player_attached_effects.hpp"
+#include "creatures/players/special_resource.hpp"
 
 class House;
 class NetworkMessage;
@@ -497,6 +498,13 @@ public:
 
 	bool setVocation(uint16_t vocId);
 	uint16_t getVocationId() const;
+
+	// Special Resource
+	void createSpecialResource(std::unique_ptr<SpecialResource> resource);
+	SpecialResource* getSpecialResource() const;
+	void initializeSpecialResource();
+	void saveSpecialResource();
+	void loadSpecialResource();
 
 	PlayerSex_t getSex() const {
 		return sex;
@@ -1387,6 +1395,8 @@ public:
 private:
 	friend class PlayerLock;
 	std::mutex mutex;
+
+	std::unique_ptr<SpecialResource> specialResource;
 
 	static uint32_t playerFirstID;
 	static uint32_t playerLastID;

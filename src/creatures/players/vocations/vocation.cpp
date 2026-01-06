@@ -194,6 +194,16 @@ bool Vocations::loadFromXml() {
 				auto quality = pugi::cast<uint8_t>(qualityAttr.value());
 				const auto name = nameAttr.as_string();
 				voc->wheelGems[static_cast<WheelGemQuality_t>(quality)] = name;
+			} else if (strcasecmp(childNode.name(), "specialresource") == 0) {
+				SpecialResourceSpec spec;
+				spec.name = childNode.attribute("name").as_string();
+				spec.max = childNode.attribute("max").as_uint();
+				spec.regen = childNode.attribute("regen").as_uint();
+				spec.drain = childNode.attribute("drain").as_uint();
+				spec.medium = childNode.attribute("medium").as_uint();
+				spec.high = childNode.attribute("high").as_uint();
+				spec.critical = childNode.attribute("critical").as_uint();
+				voc->specialResourceSpec = spec;
 			}
 		}
 	}

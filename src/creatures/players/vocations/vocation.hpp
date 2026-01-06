@@ -14,10 +14,24 @@
 enum class WheelGemQuality_t : uint8_t;
 enum class WheelGemSupremeModifier_t : uint8_t;
 
+#include <optional>
+
+struct SpecialResourceSpec {
+	std::string name;
+	uint32_t max = 0;
+	uint32_t regen = 0;
+	uint32_t drain = 0;
+	uint32_t medium = 0;
+	uint32_t high = 0;
+	uint32_t critical = 0;
+};
+
 class Vocation {
 public:
 	explicit Vocation(uint16_t initId) :
 		id(initId) { }
+
+	std::optional<SpecialResourceSpec> specialResourceSpec;
 
 	const std::string &getVocName() const;
 	const std::string &getVocDescription() const;

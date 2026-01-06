@@ -128,7 +128,91 @@ bool Player::setVocation(uint16_t vocId) {
 
 	updateRegeneration();
 	g_game().addPlayerVocation(static_self_cast<Player>());
+	initializeSpecialResource();
 	return true;
+}
+
+void Player::createSpecialResource(std::unique_ptr<SpecialResource> resource) {
+	specialResource = std::move(resource);
+	if (specialResource) {
+		specialResource->setChangeCallback([this](SpecialResource*) {
+			sendStats();
+		});
+	}
+}
+
+SpecialResource* Player::getSpecialResource() const {
+	return specialResource.get();
+}
+
+void Player::initializeSpecialResource() {
+	if (!vocation) {
+		return;
+	}
+	if (!vocation->specialResourceSpec.has_value()) {
+		specialResource.reset();
+		return;
+	}
+	const auto &spec = vocation->specialResourceSpec.value();
+	if (!specialResource || specialResource->getName() != spec.name) {
+		auto res = std::make_unique<SpecialResource>(
+			spec.name,
+			spec.max,
+			spec.regen,
+			spec.drain,
+			spec.medium,
+			spec.high,
+			spec.critical
+		);
+		createSpecialResource(std::move(res));
+	}
+}
+
+void Player::saveSpecialResource() {
+	if (specialResource) {
+		kv()->set(fmt::format("special-resource-{}", specialResource->getName()), static_cast<int>(specialResource->getValue()));
+	}
+}
+
+void Player::loadSpecialResource() {
+	if (!specialResource) {
+		return;
+	}
+
+	uint32_t savedValue = 0;
+	auto savedValueWrapper = kv()->get(fmt::format("special-resource-{}", specialResource->getName()));
+	if (savedValueWrapper) {
+		savedValue = static_cast<uint32_t>(savedValueWrapper->get<int>());
+	}
+	specialResource->setValue(savedValue);
+
+	if (lastLogout > 0) {
+		time_t now = time(nullptr);
+		if (now > lastLogout) {
+			const uint32_t offlineSeconds = static_cast<uint32_t>(now - lastLogout);
+			const uint32_t recovered = specialResource->applyOfflineRegen(offlineSeconds, isPremium());
+			if (recovered > 0) {
+				std::string timeDesc;
+				if (offlineSeconds < 60) {
+					timeDesc = fmt::format("{}s", offlineSeconds);
+				} else {
+					const uint32_t hours = offlineSeconds / 3600;
+					const uint32_t minutes = (offlineSeconds % 3600) / 60;
+					if (hours > 0) {
+						timeDesc = fmt::format("{}h {}m", hours, minutes);
+					} else {
+						timeDesc = fmt::format("{}m", minutes);
+					}
+				}
+
+				const std::string msg = fmt::format(
+					"Você esteve offline por {} e recuperou {} de {}.",
+					timeDesc, recovered, specialResource->getName()
+				);
+				sendTextMessage(MESSAGE_STATUS, msg);
+			}
+		}
+	}
 }
 
 uint16_t Player::getVocationId() const {
@@ -7944,6 +8028,10 @@ void Player::onThink(uint32_t interval) {
 
 	// Wheel of destiny major spells
 	wheel().onThink();
+
+	if (specialResource) {
+		specialResource->update(interval);
+	}
 
 	g_callbacks().executeCallback(EventCallback_t::playerOnThink, &EventCallback::playerOnThink, getPlayer(), interval);
 }

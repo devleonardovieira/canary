@@ -8243,6 +8243,15 @@ void ProtocolGame::AddPlayerStats(NetworkMessage &msg) {
 		msg.add<uint32_t>(player->getManaShield()); // remaining mana shield
 		msg.add<uint32_t>(player->getMaxManaShield()); // total mana shield
 	}
+
+	auto specialResource = player->getSpecialResource();
+	if (specialResource) {
+		msg.add<uint32_t>(specialResource->getValue());
+		msg.add<uint32_t>(specialResource->getMax());
+	} else {
+		msg.add<uint32_t>(0);
+		msg.add<uint32_t>(0);
+	}
 }
 
 void ProtocolGame::AddPlayerSkills(NetworkMessage &msg) {

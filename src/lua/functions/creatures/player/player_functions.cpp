@@ -16,6 +16,7 @@
 #include "creatures/interactions/chat.hpp"
 #include "creatures/monsters/monsters.hpp"
 #include "creatures/players/player.hpp"
+#include "creatures/players/special_resource.hpp"
 #include "creatures/players/vocations/vocation.hpp"
 #include "server/network/protocol/protocolgame.hpp"
 #include "game/game.hpp"
@@ -235,6 +236,25 @@ void PlayerFunctions::init(lua_State* L) {
 	Lua::registerMethod(L, "Player", "hasFamiliar", PlayerFunctions::luaPlayerHasFamiliar);
 	Lua::registerMethod(L, "Player", "setFamiliarLooktype", PlayerFunctions::luaPlayerSetFamiliarLooktype);
 	Lua::registerMethod(L, "Player", "getFamiliarLooktype", PlayerFunctions::luaPlayerGetFamiliarLooktype);
+
+	// Special Resource
+	Lua::registerMethod(L, "Player", "hasSpecialResource", PlayerFunctions::luaPlayerHasSpecialResource);
+	Lua::registerMethod(L, "Player", "getSpecialResourceName", PlayerFunctions::luaPlayerGetSpecialResourceName);
+	Lua::registerMethod(L, "Player", "getSpecialResourceValue", PlayerFunctions::luaPlayerGetSpecialResourceValue);
+	Lua::registerMethod(L, "Player", "getSpecialResourceMax", PlayerFunctions::luaPlayerGetSpecialResourceMax);
+	Lua::registerMethod(L, "Player", "getSpecialResourceState", PlayerFunctions::luaPlayerGetSpecialResourceState);
+	Lua::registerMethod(L, "Player", "addSpecialResource", PlayerFunctions::luaPlayerAddSpecialResource);
+	Lua::registerMethod(L, "Player", "removeSpecialResource", PlayerFunctions::luaPlayerRemoveSpecialResource);
+	Lua::registerMethod(L, "Player", "setSpecialResourceMode", PlayerFunctions::luaPlayerSetSpecialResourceMode);
+	Lua::registerMethod(L, "Player", "getSpecialResourceMode", PlayerFunctions::luaPlayerGetSpecialResourceMode);
+	Lua::registerMethod(L, "Player", "setSpecialResourcePaused", PlayerFunctions::luaPlayerSetSpecialResourcePaused);
+	Lua::registerMethod(L, "Player", "removeSpecialResourcePaused", PlayerFunctions::luaPlayerRemoveSpecialResourcePaused);
+	Lua::registerMethod(L, "Player", "isSpecialResourcePaused", PlayerFunctions::luaPlayerIsSpecialResourcePaused);
+
+	Lua::registerMethod(L, "Player", "setSpecialResourceRegen", PlayerFunctions::luaPlayerSetSpecialResourceRegen);
+	Lua::registerMethod(L, "Player", "getSpecialResourceRegen", PlayerFunctions::luaPlayerGetSpecialResourceRegen);
+	Lua::registerMethod(L, "Player", "setSpecialResourceDrain", PlayerFunctions::luaPlayerSetSpecialResourceDrain);
+	Lua::registerMethod(L, "Player", "getSpecialResourceDrain", PlayerFunctions::luaPlayerGetSpecialResourceDrain);
 
 	Lua::registerMethod(L, "Player", "getPremiumDays", PlayerFunctions::luaPlayerGetPremiumDays);
 	Lua::registerMethod(L, "Player", "addPremiumDays", PlayerFunctions::luaPlayerAddPremiumDays);
@@ -1327,6 +1347,215 @@ int PlayerFunctions::luaPlayerGetLevel(lua_State* L) {
 	} else {
 		lua_pushnil(L);
 	}
+	return 1;
+}
+
+int PlayerFunctions::luaPlayerHasSpecialResource(lua_State* L) {
+	const auto &player = Lua::getUserdataShared<Player>(L, 1, "Player");
+	if (!player) {
+		lua_pushnil(L);
+		return 1;
+	}
+	Lua::pushBoolean(L, player->getSpecialResource() != nullptr);
+	return 1;
+}
+
+int PlayerFunctions::luaPlayerGetSpecialResourceName(lua_State* L) {
+	const auto &player = Lua::getUserdataShared<Player>(L, 1, "Player");
+	if (!player) {
+		lua_pushnil(L);
+		return 1;
+	}
+	const auto sr = player->getSpecialResource();
+	if (!sr) {
+		lua_pushnil(L);
+		return 1;
+	}
+	lua_pushstring(L, sr->getName().c_str());
+	return 1;
+}
+
+int PlayerFunctions::luaPlayerGetSpecialResourceValue(lua_State* L) {
+	const auto &player = Lua::getUserdataShared<Player>(L, 1, "Player");
+	if (!player) {
+		lua_pushnil(L);
+		return 1;
+	}
+	const auto sr = player->getSpecialResource();
+	if (!sr) {
+		lua_pushnil(L);
+		return 1;
+	}
+	lua_pushnumber(L, sr->getValue());
+	return 1;
+}
+
+int PlayerFunctions::luaPlayerGetSpecialResourceMax(lua_State* L) {
+	const auto &player = Lua::getUserdataShared<Player>(L, 1, "Player");
+	if (!player) {
+		lua_pushnil(L);
+		return 1;
+	}
+	const auto sr = player->getSpecialResource();
+	if (!sr) {
+		lua_pushnil(L);
+		return 1;
+	}
+	lua_pushnumber(L, sr->getMax());
+	return 1;
+}
+
+int PlayerFunctions::luaPlayerGetSpecialResourceState(lua_State* L) {
+	const auto &player = Lua::getUserdataShared<Player>(L, 1, "Player");
+	if (!player) {
+		lua_pushnil(L);
+		return 1;
+	}
+	const auto sr = player->getSpecialResource();
+	if (!sr) {
+		lua_pushnil(L);
+		return 1;
+	}
+	lua_pushnumber(L, static_cast<uint8_t>(sr->getState()));
+	return 1;
+}
+
+int PlayerFunctions::luaPlayerAddSpecialResource(lua_State* L) {
+	const auto &player = Lua::getUserdataShared<Player>(L, 1, "Player");
+	if (!player) {
+		lua_pushnil(L);
+		return 1;
+	}
+	const auto sr = player->getSpecialResource();
+	if (!sr) {
+		lua_pushnil(L);
+		return 1;
+	}
+	const auto amount = Lua::getNumber<uint32_t>(L, 2, 0);
+	sr->add(amount);
+	Lua::pushBoolean(L, true);
+	return 1;
+}
+
+int PlayerFunctions::luaPlayerRemoveSpecialResource(lua_State* L) {
+	const auto &player = Lua::getUserdataShared<Player>(L, 1, "Player");
+	if (!player) {
+		lua_pushnil(L);
+		return 1;
+	}
+	const auto sr = player->getSpecialResource();
+	if (!sr) {
+		lua_pushnil(L);
+		return 1;
+	}
+	const auto amount = Lua::getNumber<uint32_t>(L, 2, 0);
+	sr->remove(amount);
+	Lua::pushBoolean(L, true);
+	return 1;
+}
+
+int PlayerFunctions::luaPlayerSetSpecialResourceMode(lua_State* L) {
+	const auto &player = Lua::getUserdataShared<Player>(L, 1, "Player");
+	if (!player) {
+		lua_pushnil(L);
+		return 1;
+	}
+	const auto sr = player->getSpecialResource();
+	if (!sr) {
+		lua_pushnil(L);
+		return 1;
+	}
+	auto mode = static_cast<SpecialResourceMode>(Lua::getNumber<uint8_t>(L, 2, 0));
+	sr->setMode(mode);
+	Lua::pushBoolean(L, true);
+	return 1;
+}
+
+int PlayerFunctions::luaPlayerGetSpecialResourceMode(lua_State* L) {
+	const auto &player = Lua::getUserdataShared<Player>(L, 1, "Player");
+	if (!player) {
+		lua_pushnil(L);
+		return 1;
+	}
+	const auto sr = player->getSpecialResource();
+	if (!sr) {
+		lua_pushnil(L);
+		return 1;
+	}
+	lua_pushnumber(L, static_cast<uint8_t>(sr->getMode()));
+	return 1;
+}
+
+int PlayerFunctions::luaPlayerSetSpecialResourcePaused(lua_State* L) {
+	const auto &player = Lua::getUserdataShared<Player>(L, 1, "Player");
+	if (!player) {
+		lua_pushnil(L);
+		return 1;
+	}
+	const auto sr = player->getSpecialResource();
+	if (!sr) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	if (Lua::isBoolean(L, 2)) {
+		if (Lua::getBoolean(L, 2)) {
+			sr->setPaused(SpecialResourcePauseState::ALL);
+		} else {
+			sr->removePaused(SpecialResourcePauseState::ALL);
+		}
+	} else {
+		auto flags = static_cast<SpecialResourcePauseState>(Lua::getNumber<uint8_t>(L, 2, 0));
+		sr->setPaused(flags);
+	}
+
+	Lua::pushBoolean(L, true);
+	return 1;
+}
+
+int PlayerFunctions::luaPlayerRemoveSpecialResourcePaused(lua_State* L) {
+	const auto &player = Lua::getUserdataShared<Player>(L, 1, "Player");
+	if (!player) {
+		lua_pushnil(L);
+		return 1;
+	}
+	const auto sr = player->getSpecialResource();
+	if (!sr) {
+		lua_pushnil(L);
+		return 1;
+	}
+
+	if (Lua::isBoolean(L, 2)) {
+		if (Lua::getBoolean(L, 2)) {
+			sr->removePaused(SpecialResourcePauseState::ALL);
+		}
+	} else {
+		auto flags = static_cast<SpecialResourcePauseState>(Lua::getNumber<uint8_t>(L, 2, 0));
+		sr->removePaused(flags);
+	}
+
+	Lua::pushBoolean(L, true);
+	return 1;
+}
+
+int PlayerFunctions::luaPlayerIsSpecialResourcePaused(lua_State* L) {
+	const auto &player = Lua::getUserdataShared<Player>(L, 1, "Player");
+	if (!player) {
+		lua_pushnil(L);
+		return 1;
+	}
+	const auto sr = player->getSpecialResource();
+	if (!sr) {
+		lua_pushnil(L);
+		return 1;
+	}
+	
+	SpecialResourcePauseState flag = SpecialResourcePauseState::ALL;
+	if (lua_gettop(L) >= 2) {
+		flag = static_cast<SpecialResourcePauseState>(Lua::getNumber<uint8_t>(L, 2, 0));
+	}
+
+	Lua::pushBoolean(L, sr->isPaused(flag));
 	return 1;
 }
 

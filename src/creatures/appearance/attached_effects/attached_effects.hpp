@@ -30,8 +30,8 @@ struct Effect {
 	std::string name;
 };
 
-struct Outfit {
-	Outfit(uint16_t initId, const std::string &name) :
+struct OutfitEffect {
+	OutfitEffect(uint16_t initId, const std::string &name) :
 		id(initId), name(name) { }
 	uint16_t id;
 	std::string name;
@@ -53,13 +53,13 @@ public:
 	std::shared_ptr<Effect> getEffectByID(uint8_t id);
 	std::shared_ptr<Wing> getWingByID(uint8_t id);
 	std::shared_ptr<Shader> getShaderByID(uint8_t id);
-	std::shared_ptr<Outfit> getOutfitByID(uint8_t id);
+	std::shared_ptr<OutfitEffect> getOutfitByID(uint8_t id);
 
 	std::shared_ptr<Aura> getAuraByName(const std::string &name);
 	std::shared_ptr<Shader> getShaderByName(const std::string &name);
 	std::shared_ptr<Effect> getEffectByName(const std::string &name);
 	std::shared_ptr<Wing> getWingByName(const std::string &name);
-	std::shared_ptr<Outfit> getOutfitByName(const std::string &name);
+	std::shared_ptr<OutfitEffect> getOutfitByName(const std::string &name);
 
 	[[nodiscard]] const std::vector<std::shared_ptr<Aura>> &getAuras() const {
 		return auras;
@@ -73,7 +73,7 @@ public:
 	[[nodiscard]] const std::vector<std::shared_ptr<Wing>> &getWings() const {
 		return wings;
 	}
-	[[nodiscard]] const std::vector<std::shared_ptr<Outfit>> &getOutfits() const {
+	[[nodiscard]] const std::vector<std::shared_ptr<OutfitEffect>> &getOutfits() const {
 		return outfits;
 	}
 
@@ -82,5 +82,5 @@ private:
 	std::vector<std::shared_ptr<Shader>> shaders;
 	std::vector<std::shared_ptr<Effect>> effects;
 	std::vector<std::shared_ptr<Wing>> wings;
-	std::vector<std::shared_ptr<Outfit>> outfits;
+	std::vector<std::shared_ptr<OutfitEffect>> outfits;
 };

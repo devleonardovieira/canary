@@ -189,6 +189,7 @@ void IOLoginData::loadOnlyDataForOnlinePlayer(const std::shared_ptr<Player> &pla
 	IOLoginDataLoad::loadPlayerBosstiary(player, result);
 	IOLoginDataLoad::loadPlayerInitializeSystem(player);
 	IOLoginDataLoad::loadPlayerUpdateSystem(player);
+	player->loadSpecialResource();
 }
 
 bool IOLoginData::savePlayer(const std::shared_ptr<Player> &player) {
@@ -286,6 +287,8 @@ void IOLoginData::saveOnlyDataForOnlinePlayer(const std::shared_ptr<Player> &pla
 	player->wheel().saveActiveGems();
 	player->wheel().saveKVModGrades();
 	player->wheel().saveKVScrolls();
+	player->saveSpecialResource();
+
 
 	if (!IOLoginDataSave::savePlayerStorage(player)) {
 		throw DatabaseException("[IOLoginDataSave::savePlayerStorage] - Failed to save player storage: " + player->getName());
