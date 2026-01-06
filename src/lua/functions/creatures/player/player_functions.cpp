@@ -251,11 +251,6 @@ void PlayerFunctions::init(lua_State* L) {
 	Lua::registerMethod(L, "Player", "removeSpecialResourcePaused", PlayerFunctions::luaPlayerRemoveSpecialResourcePaused);
 	Lua::registerMethod(L, "Player", "isSpecialResourcePaused", PlayerFunctions::luaPlayerIsSpecialResourcePaused);
 
-	Lua::registerMethod(L, "Player", "setSpecialResourceRegen", PlayerFunctions::luaPlayerSetSpecialResourceRegen);
-	Lua::registerMethod(L, "Player", "getSpecialResourceRegen", PlayerFunctions::luaPlayerGetSpecialResourceRegen);
-	Lua::registerMethod(L, "Player", "setSpecialResourceDrain", PlayerFunctions::luaPlayerSetSpecialResourceDrain);
-	Lua::registerMethod(L, "Player", "getSpecialResourceDrain", PlayerFunctions::luaPlayerGetSpecialResourceDrain);
-
 	Lua::registerMethod(L, "Player", "getPremiumDays", PlayerFunctions::luaPlayerGetPremiumDays);
 	Lua::registerMethod(L, "Player", "addPremiumDays", PlayerFunctions::luaPlayerAddPremiumDays);
 	Lua::registerMethod(L, "Player", "removePremiumDays", PlayerFunctions::luaPlayerRemovePremiumDays);

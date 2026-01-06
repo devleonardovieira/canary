@@ -410,10 +410,6 @@ class PlayerFunctions {
 	static int luaPlayerSetSpecialResourcePaused(lua_State* L);
 	static int luaPlayerRemoveSpecialResourcePaused(lua_State* L);
 	static int luaPlayerIsSpecialResourcePaused(lua_State* L);
-	static int luaPlayerSetSpecialResourceRegen(lua_State* L);
-	static int luaPlayerGetSpecialResourceRegen(lua_State* L);
-	static int luaPlayerSetSpecialResourceDrain(lua_State* L);
-	static int luaPlayerGetSpecialResourceDrain(lua_State* L);
 
 	friend class CreatureFunctions;
 };
