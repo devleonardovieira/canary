@@ -437,21 +437,27 @@ void Party::broadcastPartyDetailedInfo() {
 		return;
 	}
 
-	leader->sendPartyDetailedInfo(getParty());
+	const auto party = getParty();
+	leader->sendPartyDetailedInfo(party);
 	for (const auto &member : getMembers()) {
-		member->sendPartyDetailedInfo(getParty());
+		member->sendPartyDetailedInfo(party);
 	}
 }
 
-void Party::broadcastPartyMemberUpdate(const std::shared_ptr<Player> &member) {
+void Party::broadcastPartyMemberUpdate(const std::shared_ptr<Player> &member, uint32_t flags) {
 	const auto &leader = getLeader();
 	if (!leader) {
 		return;
 	}
 
-	leader->sendPartyMemberUpdate(member);
+	if (leader != member) {
+		leader->sendPartyMemberUpdate(member, flags);
+	}
+
 	for (const auto &m : getMembers()) {
-		m->sendPartyMemberUpdate(member);
+		if (m != member) {
+			m->sendPartyMemberUpdate(member, flags);
+		}
 	}
 }
 

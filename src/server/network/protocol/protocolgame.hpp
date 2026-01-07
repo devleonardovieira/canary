@@ -329,7 +329,8 @@ private:
 	void sendPartyPlayerMana(const std::shared_ptr<Player> &target, uint8_t manaPercent);
 	void sendPartyCreatureShowStatus(const std::shared_ptr<Creature> &target, bool showStatus);
 	void sendPartyDetailedInfo(const std::shared_ptr<Party> &party);
-	void sendPartyMemberUpdate(const std::shared_ptr<Player> &member);
+	void sendPartyMemberUpdate(const std::shared_ptr<Player> &member, uint32_t flags);
+	void updatePartyTrackerAnalyzer(const std::shared_ptr<Party> &party);
 	void sendPartyPlayerVocation(const std::shared_ptr<Player> &target);
 	void sendPlayerVocation(const std::shared_ptr<Player> &target);
 	void sendSkills();
@@ -407,7 +408,6 @@ private:
 	void sendTradeWindowItemRemove(bool playerSide, uint8_t slot);
 	void sendTradeWindowAcceptUpdate(bool playerSide, bool accepted);
 	void sendTradeWindowClose();
-	void updatePartyTrackerAnalyzer(const std::shared_ptr<Party> &party);
 
 	void sendTextWindow(uint32_t windowTextId, uint32_t itemId, const std::string &text);
 	void sendTextWindow(uint32_t windowTextId, const std::shared_ptr<Item> &item, uint16_t maxlen, bool canWrite);

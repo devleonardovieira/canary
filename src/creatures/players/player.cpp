@@ -2315,8 +2315,42 @@ void Player::sendStats() {
 		lastStatsTrainingTime = getOfflineTrainingTime() / 60 / 1000;
 	}
 
-	if (const auto &party = getParty()) {
-		party->broadcastPartyMemberUpdate(getPlayer());
+    if (const auto &party = getParty()) {
+        uint32_t flags = PARTY_DIRTY_NONE;
+
+		if (lastPartyHealth != health || lastPartyMaxHealth != getMaxHealth()) {
+			flags |= PARTY_DIRTY_HP;
+		}
+
+		if (lastPartyMana != mana || lastPartyMaxMana != getMaxMana()) {
+			flags |= PARTY_DIRTY_MANA;
+		}
+
+		if (lastPartyLevel != level) {
+			flags |= PARTY_DIRTY_LEVEL;
+		}
+
+		if (lastPartyVocation != getVocationId()) {
+			flags |= PARTY_DIRTY_VOC;
+		}
+
+		pendingPartyFlags |= flags;
+
+		if (pendingPartyFlags != PARTY_DIRTY_NONE) {
+			const auto now = OTSYS_TIME();
+			if ((now - lastPartyUpdateMs) >= 200) {
+				lastPartyUpdateMs = now;
+				party->broadcastPartyMemberUpdate(getPlayer(), pendingPartyFlags);
+
+				lastPartyHealth = health;
+				lastPartyMaxHealth = getMaxHealth();
+				lastPartyMana = mana;
+				lastPartyMaxMana = getMaxMana();
+				lastPartyLevel = level;
+				lastPartyVocation = getVocationId();
+				pendingPartyFlags = PARTY_DIRTY_NONE;
+			}
+		}
 	}
 }
 
@@ -7258,9 +7292,9 @@ void Player::sendPartyDetailedInfo(const std::shared_ptr<Party> &party) const {
 	}
 }
 
-void Player::sendPartyMemberUpdate(const std::shared_ptr<Player> &member) const {
+void Player::sendPartyMemberUpdate(const std::shared_ptr<Player> &member, uint32_t flags) const {
 	if (client) {
-		client->sendPartyMemberUpdate(member);
+		client->sendPartyMemberUpdate(member, flags);
 	}
 }
 
@@ -8047,6 +8081,26 @@ void Player::onThink(uint32_t interval) {
 
 	if (specialResource) {
 		specialResource->update(interval);
+	}
+
+	if (pendingPartyFlags != PARTY_DIRTY_NONE) {
+		if (const auto &party = getParty()) {
+			const auto now = OTSYS_TIME();
+			if ((now - lastPartyUpdateMs) >= 200) {
+				lastPartyUpdateMs = now;
+				party->broadcastPartyMemberUpdate(getPlayer(), pendingPartyFlags);
+
+				lastPartyHealth = health;
+				lastPartyMaxHealth = getMaxHealth();
+				lastPartyMana = mana;
+				lastPartyMaxMana = getMaxMana();
+				lastPartyLevel = level;
+				lastPartyVocation = getVocationId();
+				pendingPartyFlags = PARTY_DIRTY_NONE;
+			}
+		} else {
+			pendingPartyFlags = PARTY_DIRTY_NONE;
+		}
 	}
 
 	g_callbacks().executeCallback(EventCallback_t::playerOnThink, &EventCallback::playerOnThink, getPlayer(), interval);

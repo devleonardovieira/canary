@@ -354,7 +354,7 @@ public:
 	bool isPartner(const std::shared_ptr<Player> &player) const;
 	void sendPlayerPartyIcons(const std::shared_ptr<Player> &player) const;
 	void sendPartyDetailedInfo(const std::shared_ptr<Party> &party) const;
-	void sendPartyMemberUpdate(const std::shared_ptr<Player> &member) const;
+	void sendPartyMemberUpdate(const std::shared_ptr<Player> &member, uint32_t flags) const;
 	bool addPartyInvitation(const std::shared_ptr<Party> &party);
 	void removePartyInvitation(const std::shared_ptr<Party> &party);
 	void clearPartyInvitations();
@@ -1535,6 +1535,15 @@ private:
 	int64_t lastUIInteraction = 0;
 	int64_t lastPing;
 	int64_t lastPong;
+
+	int32_t lastPartyHealth = 0;
+	int32_t lastPartyMaxHealth = 0;
+	int32_t lastPartyMana = 0;
+	int32_t lastPartyMaxMana = 0;
+    int32_t lastPartyLevel = 0;
+    int32_t lastPartyVocation = 0;
+    uint64_t lastPartyUpdateMs = 0;
+	uint32_t pendingPartyFlags = 0;
 	int64_t nextAction = 0;
 	int64_t nextPotionAction = 0;
 	int64_t nextNecklaceAction = 0;

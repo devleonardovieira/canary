@@ -14,12 +14,19 @@
 enum MessageClasses : uint8_t;
 
 enum SharedExpStatus_t : uint8_t {
-	SHAREDEXP_OK,
-	SHAREDEXP_TOOFARAWAY,
-	SHAREDEXP_LEVELDIFFTOOLARGE,
-	SHAREDEXP_MEMBERINACTIVE,
-	SHAREDEXP_EMPTYPARTY
+    SHAREDEXP_OK,
+    SHAREDEXP_TOOFARAWAY,
+    SHAREDEXP_LEVELDIFFTOOLARGE,
+    SHAREDEXP_MEMBERINACTIVE,
+    SHAREDEXP_EMPTYPARTY
 };
+
+constexpr uint32_t PARTY_DIRTY_NONE  = 0x00;
+constexpr uint32_t PARTY_DIRTY_HP    = 0x01;
+constexpr uint32_t PARTY_DIRTY_MANA  = 0x02;
+constexpr uint32_t PARTY_DIRTY_LEVEL = 0x04;
+constexpr uint32_t PARTY_DIRTY_VOC   = 0x08;
+constexpr uint32_t PARTY_DIRTY_ALL   = PARTY_DIRTY_HP | PARTY_DIRTY_MANA | PARTY_DIRTY_LEVEL | PARTY_DIRTY_VOC;
 
 struct Position;
 
@@ -53,8 +60,8 @@ public:
 
 	bool isPlayerInvited(const std::shared_ptr<Player> &player) const;
 	void updateAllPartyIcons();
-	void broadcastPartyDetailedInfo();
-	void broadcastPartyMemberUpdate(const std::shared_ptr<Player> &member);
+    void broadcastPartyDetailedInfo();
+    void broadcastPartyMemberUpdate(const std::shared_ptr<Player> &member, uint32_t flags = PARTY_DIRTY_ALL);
 	void broadcastPartyMessage(MessageClasses msgClass, const std::string &msg, bool sendToInvitations = false);
 	bool empty() const;
 	bool canOpenCorpse(uint32_t ownerId) const;

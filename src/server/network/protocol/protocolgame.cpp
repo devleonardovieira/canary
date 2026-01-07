@@ -8569,15 +8569,21 @@ void ProtocolGame::sendPartyDetailedInfo(const std::shared_ptr<Party> &party) {
 
 	msg.add<uint32_t>(leader->getID());
 
-	const auto &members = party->getMembers();
-	// Total count = members + leader
-	msg.addByte(static_cast<uint8_t>(members.size() + 1));
+    const auto &members = party->getMembers();
+    const size_t count = members.size() + 1;
+    msg.addByte(static_cast<uint8_t>(std::min<size_t>(count, 255)));
 
 	auto addPlayerData = [&](const std::shared_ptr<Player> &p) {
 		msg.add<uint32_t>(p->getID());
 		msg.addString(p->getName());
 		msg.add<uint16_t>(p->getLevel());
-		msg.add<uint16_t>(p->getVocation() ? p->getVocation()->getId() : 0);
+
+		uint16_t vocationId = 0;
+		if (const auto &vocation = p->getVocation()) {
+			vocationId = vocation->getId();
+		}
+		msg.add<uint16_t>(vocationId);
+
 		msg.add<uint32_t>(p->getHealth());
 		msg.add<uint32_t>(p->getMaxHealth());
 		msg.add<uint32_t>(p->getMana());
@@ -8594,7 +8600,7 @@ void ProtocolGame::sendPartyDetailedInfo(const std::shared_ptr<Party> &party) {
 	writeToOutputBuffer(msg);
 }
 
-void ProtocolGame::sendPartyMemberUpdate(const std::shared_ptr<Player> &member) {
+void ProtocolGame::sendPartyMemberUpdate(const std::shared_ptr<Player> &member, uint32_t flags) {
 	if (!member) {
 		return;
 	}
@@ -8604,12 +8610,22 @@ void ProtocolGame::sendPartyMemberUpdate(const std::shared_ptr<Player> &member) 
 	msg.addByte(0x01); // Action: Update
 
 	msg.add<uint32_t>(member->getID());
-	msg.add<uint16_t>(member->getLevel());
-	msg.add<uint16_t>(member->getVocation() ? member->getVocation()->getId() : 0);
-	msg.add<uint32_t>(member->getHealth());
-	msg.add<uint32_t>(member->getMaxHealth());
-	msg.add<uint32_t>(member->getMana());
-	msg.add<uint32_t>(member->getMaxMana());
+    msg.addByte(static_cast<uint8_t>(flags));
+
+    if (flags & PARTY_DIRTY_LEVEL) {
+        msg.add<uint16_t>(member->getLevel());
+    }
+    if (flags & PARTY_DIRTY_VOC) {
+        msg.add<uint16_t>(member->getVocation() ? member->getVocation()->getId() : 0);
+    }
+    if (flags & PARTY_DIRTY_HP) {
+        msg.add<uint32_t>(member->getHealth());
+        msg.add<uint32_t>(member->getMaxHealth());
+    }
+    if (flags & PARTY_DIRTY_MANA) {
+        msg.add<uint32_t>(member->getMana());
+        msg.add<uint32_t>(member->getMaxMana());
+    }
 
 	writeToOutputBuffer(msg);
 }
