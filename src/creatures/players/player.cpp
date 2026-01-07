@@ -2315,8 +2315,8 @@ void Player::sendStats() {
 		lastStatsTrainingTime = getOfflineTrainingTime() / 60 / 1000;
 	}
 
-    if (const auto &party = getParty()) {
-        uint32_t flags = PARTY_DIRTY_NONE;
+	if (const auto &party = getParty()) {
+		uint32_t flags = PARTY_DIRTY_NONE;
 
 		if (lastPartyHealth != health || lastPartyMaxHealth != getMaxHealth()) {
 			flags |= PARTY_DIRTY_HP;

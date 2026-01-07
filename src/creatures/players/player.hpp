@@ -1540,9 +1540,9 @@ private:
 	int32_t lastPartyMaxHealth = 0;
 	int32_t lastPartyMana = 0;
 	int32_t lastPartyMaxMana = 0;
-    int32_t lastPartyLevel = 0;
-    int32_t lastPartyVocation = 0;
-    uint64_t lastPartyUpdateMs = 0;
+	int32_t lastPartyLevel = 0;
+	int32_t lastPartyVocation = 0;
+	uint64_t lastPartyUpdateMs = 0;
 	uint32_t pendingPartyFlags = 0;
 	int64_t nextAction = 0;
 	int64_t nextPotionAction = 0;
