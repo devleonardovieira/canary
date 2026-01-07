@@ -8553,6 +8553,67 @@ void ProtocolGame::sendSpecialContainersAvailable() {
 	writeToOutputBuffer(msg);
 }
 
+void ProtocolGame::sendPartyDetailedInfo(const std::shared_ptr<Party> &party) {
+	if (!party) {
+		return;
+	}
+
+	const auto &leader = party->getLeader();
+	if (!leader) {
+		return;
+	}
+
+	NetworkMessage msg;
+	msg.addByte(0x39); // Opcode for detailed party info
+	msg.addByte(0x00); // Action: Full List
+
+	msg.add<uint32_t>(leader->getID());
+
+	const auto &members = party->getMembers();
+	// Total count = members + leader
+	msg.addByte(static_cast<uint8_t>(members.size() + 1));
+
+	auto addPlayerData = [&](const std::shared_ptr<Player> &p) {
+		msg.add<uint32_t>(p->getID());
+		msg.addString(p->getName());
+		msg.add<uint16_t>(p->getLevel());
+		msg.add<uint16_t>(p->getVocation() ? p->getVocation()->getId() : 0);
+		msg.add<uint32_t>(p->getHealth());
+		msg.add<uint32_t>(p->getMaxHealth());
+		msg.add<uint32_t>(p->getMana());
+		msg.add<uint32_t>(p->getMaxMana());
+		msg.addByte(p == leader ? 1 : 0);
+	};
+
+	addPlayerData(leader);
+
+	for (const auto &member : members) {
+		addPlayerData(member);
+	}
+
+	writeToOutputBuffer(msg);
+}
+
+void ProtocolGame::sendPartyMemberUpdate(const std::shared_ptr<Player> &member) {
+	if (!member) {
+		return;
+	}
+
+	NetworkMessage msg;
+	msg.addByte(0x39); // Opcode for detailed party info
+	msg.addByte(0x01); // Action: Update
+
+	msg.add<uint32_t>(member->getID());
+	msg.add<uint16_t>(member->getLevel());
+	msg.add<uint16_t>(member->getVocation() ? member->getVocation()->getId() : 0);
+	msg.add<uint32_t>(member->getHealth());
+	msg.add<uint32_t>(member->getMaxHealth());
+	msg.add<uint32_t>(member->getMana());
+	msg.add<uint32_t>(member->getMaxMana());
+
+	writeToOutputBuffer(msg);
+}
+
 void ProtocolGame::updatePartyTrackerAnalyzer(const std::shared_ptr<Party> &party) {
 	if (oldProtocol || !player || !party || !party->getLeader()) {
 		return;

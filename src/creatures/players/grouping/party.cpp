@@ -199,6 +199,7 @@ bool Party::leaveParty(const std::shared_ptr<Player> &player, bool forceRemove /
 	player->sendTextMessage(MESSAGE_PARTY_MANAGEMENT, "You have left the party.");
 
 	updateSharedExperience();
+	broadcastPartyDetailedInfo();
 
 	clearPlayerPoints(player);
 
@@ -241,6 +242,7 @@ bool Party::passPartyLeadership(const std::shared_ptr<Player> &player) {
 
 	updateSharedExperience();
 	updateTrackerAnalyzer();
+	broadcastPartyDetailedInfo();
 
 	for (const auto &member : getMembers()) {
 		member->sendPartyCreatureShield(oldLeader);
@@ -313,6 +315,7 @@ bool Party::joinParty(const std::shared_ptr<Player> &player) {
 	ss << "You have joined " << leaderName << "'" << (leaderName.back() == 's' ? "" : "s") << " party. Open the party channel to communicate with your companions.";
 	player->sendTextMessage(MESSAGE_PARTY_MANAGEMENT, ss.str());
 	updateTrackerAnalyzer();
+	broadcastPartyDetailedInfo();
 	return true;
 }
 
@@ -426,6 +429,30 @@ void Party::updateAllPartyIcons() {
 	}
 	leader->sendPartyCreatureShield(leader);
 	updateTrackerAnalyzer();
+}
+
+void Party::broadcastPartyDetailedInfo() {
+	const auto &leader = getLeader();
+	if (!leader) {
+		return;
+	}
+
+	leader->sendPartyDetailedInfo(getParty());
+	for (const auto &member : getMembers()) {
+		member->sendPartyDetailedInfo(getParty());
+	}
+}
+
+void Party::broadcastPartyMemberUpdate(const std::shared_ptr<Player> &member) {
+	const auto &leader = getLeader();
+	if (!leader) {
+		return;
+	}
+
+	leader->sendPartyMemberUpdate(member);
+	for (const auto &m : getMembers()) {
+		m->sendPartyMemberUpdate(member);
+	}
 }
 
 void Party::broadcastPartyMessage(MessageClasses msgClass, const std::string &msg, bool sendToInvitations /*= false*/) {

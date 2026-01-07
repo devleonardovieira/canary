@@ -53,6 +53,8 @@ public:
 
 	bool isPlayerInvited(const std::shared_ptr<Player> &player) const;
 	void updateAllPartyIcons();
+	void broadcastPartyDetailedInfo();
+	void broadcastPartyMemberUpdate(const std::shared_ptr<Player> &member);
 	void broadcastPartyMessage(MessageClasses msgClass, const std::string &msg, bool sendToInvitations = false);
 	bool empty() const;
 	bool canOpenCorpse(uint32_t ownerId) const;

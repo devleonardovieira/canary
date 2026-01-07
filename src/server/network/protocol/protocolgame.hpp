@@ -328,6 +328,8 @@ private:
 	void sendPartyCreatureHealth(const std::shared_ptr<Creature> &target, uint8_t healthPercent);
 	void sendPartyPlayerMana(const std::shared_ptr<Player> &target, uint8_t manaPercent);
 	void sendPartyCreatureShowStatus(const std::shared_ptr<Creature> &target, bool showStatus);
+	void sendPartyDetailedInfo(const std::shared_ptr<Party> &party);
+	void sendPartyMemberUpdate(const std::shared_ptr<Player> &member);
 	void sendPartyPlayerVocation(const std::shared_ptr<Player> &target);
 	void sendPlayerVocation(const std::shared_ptr<Player> &target);
 	void sendSkills();

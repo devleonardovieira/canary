@@ -2314,6 +2314,10 @@ void Player::sendStats() {
 		client->sendStats();
 		lastStatsTrainingTime = getOfflineTrainingTime() / 60 / 1000;
 	}
+
+	if (const auto &party = getParty()) {
+		party->broadcastPartyMemberUpdate(getPlayer());
+	}
 }
 
 void Player::sendBasicData() const {
@@ -7246,6 +7250,18 @@ bool Player::isPartner(const std::shared_ptr<Player> &player) const {
 void Player::sendPlayerPartyIcons(const std::shared_ptr<Player> &player) const {
 	sendPartyCreatureShield(player);
 	sendPartyCreatureSkull(player);
+}
+
+void Player::sendPartyDetailedInfo(const std::shared_ptr<Party> &party) const {
+	if (client) {
+		client->sendPartyDetailedInfo(party);
+	}
+}
+
+void Player::sendPartyMemberUpdate(const std::shared_ptr<Player> &member) const {
+	if (client) {
+		client->sendPartyMemberUpdate(member);
+	}
 }
 
 bool Player::addPartyInvitation(const std::shared_ptr<Party> &newParty) {
