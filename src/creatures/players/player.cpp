@@ -11453,7 +11453,7 @@ void Player::useEmote(uint16_t emoteId) {
 	}
 
 	/* if (getZone() == ZONE_PROTECTION) {
-		return;
+	    return;
 	}*/
 
 	if (hasCondition(CONDITION_EXHAUST_EMOTE)) {
@@ -11721,6 +11721,3 @@ void Player::resetOldCharms() {
 
 	g_logger().info("Player: {}, recalculated charm points based on unlocked bestiary: {}", getName(), totalRefund);
 }
-
-
-

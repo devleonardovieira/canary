@@ -1357,13 +1357,12 @@ void ProtocolGame::parsePacketFromDispatcher(NetworkMessage &msg, uint8_t recvby
 			sendBlessingWindow();
 			break;
 		case 255: // ClientShinobi
-			{
-				uint16_t subOpcode = msg.get<uint16_t>();
-				if (subOpcode == 1) { // ClientEmote
-					parseEmote(msg);
-				}
+		{
+			uint16_t subOpcode = msg.get<uint16_t>();
+			if (subOpcode == 1) { // ClientEmote
+				parseEmote(msg);
 			}
-			break;
+		} break;
 		case 0xD2:
 			g_game().playerRequestOutfit(player->getID());
 			break;
@@ -1456,14 +1455,14 @@ void ProtocolGame::parsePacketFromDispatcher(NetworkMessage &msg, uint8_t recvby
 		case 0xF9:
 			parseModalWindowAnswer(msg);
 			break;
-		//case 0xFF:
-			//parseRewardChestCollect(msg);
-			//break;
-			// case 0xFA: parseStoreOpen(msg); break;
-			// case 0xFB: parseStoreRequestOffers(msg); break;
-			// case 0xFC: parseStoreBuyOffer(msg) break;
-			// case 0xFD: parseStoreOpenTransactionHistory(msg); break;
-			// case 0xFE: parseStoreRequestTransactionHistory(msg); break;
+			// case 0xFF:
+			// parseRewardChestCollect(msg);
+			// break;
+			//  case 0xFA: parseStoreOpen(msg); break;
+			//  case 0xFB: parseStoreRequestOffers(msg); break;
+			//  case 0xFC: parseStoreBuyOffer(msg) break;
+			//  case 0xFD: parseStoreOpenTransactionHistory(msg); break;
+			//  case 0xFE: parseStoreRequestTransactionHistory(msg); break;
 
 			// case 0xDF, 0xE0, 0xE1, 0xFB, 0xFC, 0xFD, 0xFE Premium Shop.
 
