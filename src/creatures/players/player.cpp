@@ -11439,6 +11439,46 @@ void Player::sendFYIBox(const std::string &message) const {
 	}
 }
 
+bool Player::hasEmote(uint16_t id) const {
+	return unlockedEmotes & (1ULL << id);
+}
+
+void Player::unlockEmote(uint16_t id) {
+	unlockedEmotes |= (1ULL << id);
+}
+
+void Player::useEmote(uint16_t emoteId) {
+	if (!hasEmote(emoteId)) {
+		return;
+	}
+
+	/* if (getZone() == ZONE_PROTECTION) {
+		return;
+	}*/
+
+	if (hasCondition(CONDITION_EXHAUST_EMOTE)) {
+		sendCancelMessage(RETURNVALUE_YOUAREEXHAUSTED);
+		return;
+	}
+
+	auto condition = Condition::createCondition(CONDITIONID_DEFAULT, CONDITION_EXHAUST_EMOTE, 1000, 0, false, 0, false);
+	addCondition(condition);
+
+	g_game().broadcastEmote(getPlayer(), emoteId);
+}
+
+void Player::sendEmote(const std::shared_ptr<Creature> &creature, uint16_t emoteId) const {
+	if (client) {
+		client->sendEmote(creature, emoteId);
+	}
+}
+
+void Player::sendUnlockedEmotes() const {
+	if (client) {
+		client->sendUnlockedEmotes();
+	}
+}
+
 void Player::parseBestiarySendRaces() const {
 	if (client) {
 		client->parseBestiarySendRaces();
@@ -11681,3 +11721,6 @@ void Player::resetOldCharms() {
 
 	g_logger().info("Player: {}, recalculated charm points based on unlocked bestiary: {}", getName(), totalRefund);
 }
+
+
+

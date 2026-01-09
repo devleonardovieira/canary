@@ -8820,6 +8820,12 @@ void Game::broadcastMessage(const std::string &text, MessageClasses type) const 
 	}
 }
 
+void Game::broadcastEmote(const std::shared_ptr<Creature> &creature, uint16_t emoteId) const {
+	for (const auto &spectator : Spectators().find<Player>(creature->getPosition(), true)) {
+		spectator->getPlayer()->sendEmote(creature, emoteId);
+	}
+}
+
 void Game::updateCreatureWalkthrough(const std::shared_ptr<Creature> &creature) {
 	// Send to clients
 	for (const auto &spectator : Spectators().find<Player>(creature->getPosition(), true)) {

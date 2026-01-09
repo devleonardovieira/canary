@@ -287,6 +287,11 @@ private:
 	void sendIconBakragore(const IconBakragore icon);
 	void sendFYIBox(const std::string &message);
 
+	// Emote System
+	void sendEmote(const std::shared_ptr<Creature> &creature, uint16_t emoteId);
+	void sendUnlockedEmotes();
+	void parseEmote(NetworkMessage &msg);
+
 	void openImbuementWindow(const std::shared_ptr<Item> &item);
 	void sendImbuementResult(const std::string &message);
 	void closeImbuementWindow();

@@ -311,6 +311,7 @@ public:
 	void internalCloseTrade(const std::shared_ptr<Player> &player);
 	bool playerBroadcastMessage(const std::shared_ptr<Player> &player, const std::string &text) const;
 	void broadcastMessage(const std::string &text, MessageClasses type) const;
+	void broadcastEmote(const std::shared_ptr<Creature> &creature, uint16_t emoteId) const;
 
 	// Implementation of player invoked events
 	void playerTeleport(uint32_t playerId, const Position &pos);

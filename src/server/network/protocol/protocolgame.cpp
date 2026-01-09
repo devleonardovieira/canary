@@ -648,6 +648,8 @@ void ProtocolGame::login(const std::string &name, uint32_t accountId, OperatingS
 			return;
 		}
 
+		sendUnlockedEmotes();
+
 		player->lastIP = player->getIP();
 		player->lastLoginSaved = std::max<time_t>(time(nullptr), player->lastLoginSaved + 1);
 		player->loginProtectionTime = OTSYS_TIME() + g_configManager().getNumber(LOGIN_PROTECTION_TIME);
@@ -700,6 +702,7 @@ void ProtocolGame::connect(const std::string &playerName, OperatingSystem_t oper
 	player->client = getThis();
 	player->openPlayerContainers();
 	sendAddCreature(player, player->getPosition(), 0, true);
+	sendUnlockedEmotes();
 	player->lastIP = player->getIP();
 	player->lastLoginSaved = std::max<time_t>(time(nullptr), player->lastLoginSaved + 1);
 	if (player->isProtected()) {
@@ -1353,6 +1356,14 @@ void ProtocolGame::parsePacketFromDispatcher(NetworkMessage &msg, uint8_t recvby
 		case 0xCF:
 			sendBlessingWindow();
 			break;
+		case 255: // ClientShinobi
+			{
+				uint16_t subOpcode = msg.get<uint16_t>();
+				if (subOpcode == 1) { // ClientEmote
+					parseEmote(msg);
+				}
+			}
+			break;
 		case 0xD2:
 			g_game().playerRequestOutfit(player->getID());
 			break;
@@ -1445,9 +1456,9 @@ void ProtocolGame::parsePacketFromDispatcher(NetworkMessage &msg, uint8_t recvby
 		case 0xF9:
 			parseModalWindowAnswer(msg);
 			break;
-		case 0xFF:
-			parseRewardChestCollect(msg);
-			break;
+		//case 0xFF:
+			//parseRewardChestCollect(msg);
+			//break;
 			// case 0xFA: parseStoreOpen(msg); break;
 			// case 0xFB: parseStoreRequestOffers(msg); break;
 			// case 0xFC: parseStoreBuyOffer(msg) break;
@@ -6978,6 +6989,30 @@ void ProtocolGame::sendFYIBox(const std::string &message) {
 	msg.addByte(0x15);
 	msg.addString(message);
 	writeToOutputBuffer(msg);
+}
+
+void ProtocolGame::sendEmote(const std::shared_ptr<Creature> &creature, uint16_t emoteId) {
+	NetworkMessage msg;
+	msg.addByte(193);
+	msg.add<uint32_t>(creature->getID());
+	msg.add<uint16_t>(emoteId);
+	writeToOutputBuffer(msg);
+}
+
+void ProtocolGame::sendUnlockedEmotes() {
+	if (!player) {
+		return;
+	}
+	NetworkMessage msg;
+	msg.addByte(0xFF); // ClientShinobi
+	msg.add<uint16_t>(0x02); // GameServerUnlockedEmotes
+	msg.add<uint64_t>(player->getUnlockedEmotes());
+	writeToOutputBuffer(msg);
+}
+
+void ProtocolGame::parseEmote(NetworkMessage &msg) {
+	uint16_t emoteId = msg.get<uint16_t>();
+	player->useEmote(emoteId);
 }
 
 // tile

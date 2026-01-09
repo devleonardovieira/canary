@@ -1389,6 +1389,17 @@ public:
 		return familiars;
 	}
 
+	// Emote System
+	bool hasEmote(uint16_t id) const;
+	void unlockEmote(uint16_t id);
+	void useEmote(uint16_t emoteId);
+	void sendEmote(const std::shared_ptr<Creature> &creature, uint16_t emoteId) const;
+	void sendUnlockedEmotes() const;
+
+	uint64_t getUnlockedEmotes() const {
+		return unlockedEmotes;
+	}
+
 	using ManagedContainerMap = std::map<ObjectCategory_t, std::pair<std::shared_ptr<Container>, std::shared_ptr<Container>>>;
 	[[nodiscard]] const ManagedContainerMap &getManagedContainers() const {
 		return m_managedContainers;
@@ -1497,6 +1508,8 @@ private:
 	std::vector<std::string> learnedInstantSpellList;
 	// TODO: This variable is only temporarily used when logging in, get rid of it somehow.
 	std::vector<std::shared_ptr<Condition>> storedConditionList;
+
+	uint64_t unlockedEmotes = 0;
 
 	std::unordered_set<std::shared_ptr<MonsterType>> m_bestiaryMonsterTracker;
 	std::unordered_set<std::shared_ptr<MonsterType>> m_bosstiaryMonsterTracker;
