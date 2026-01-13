@@ -154,28 +154,9 @@ bool Party::leaveParty(const std::shared_ptr<Player> &player, bool forceRemove /
 		return false;
 	}
 
-	bool missingLeader = false;
 	if (leader == player) {
-		if (!memberList.empty()) {
-			if (memberList.size() == 1 && inviteList.empty()) {
-				missingLeader = true;
-			} else {
-				auto newLeader = memberList.front();
-				while (!newLeader) {
-					memberList.erase(memberList.begin());
-					if (memberList.empty()) {
-						missingLeader = true;
-						break;
-					}
-					newLeader = memberList.front();
-				}
-				if (newLeader) {
-					passPartyLeadership(newLeader);
-				}
-			}
-		} else {
-			missingLeader = true;
-		}
+		disband();
+		return true;
 	}
 
 	// since we already passed the leadership, we remove the player from the list
@@ -206,10 +187,6 @@ bool Party::leaveParty(const std::shared_ptr<Player> &player, bool forceRemove /
 	std::ostringstream ss;
 	ss << player->getName() << " has left the party.";
 	broadcastPartyMessage(MESSAGE_PARTY_MANAGEMENT, ss.str());
-
-	if (missingLeader || empty()) {
-		disband();
-	}
 
 	player->sendCreatureSkull(player);
 	leader->sendCreatureSkull(player);
