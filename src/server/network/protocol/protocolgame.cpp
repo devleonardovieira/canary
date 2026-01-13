@@ -1303,6 +1303,9 @@ void ProtocolGame::parsePacketFromDispatcher(NetworkMessage &msg, uint8_t recvby
 		case 0xA8:
 			parseEnableSharedPartyExperience(msg);
 			break;
+		case 0xA9:
+			parseCreateParty();
+			break;
 		case 0xAA:
 			g_game().playerCreatePrivateChannel(player->getID());
 			break;
@@ -3282,6 +3285,10 @@ void ProtocolGame::parseSendResourceBalance() {
 void ProtocolGame::parseInviteToParty(NetworkMessage &msg) {
 	auto targetId = msg.get<uint32_t>();
 	g_game().playerInviteToParty(player->getID(), targetId);
+}
+
+void ProtocolGame::parseCreateParty() {
+	g_game().playerCreateParty(player->getID());
 }
 
 void ProtocolGame::parseJoinParty(NetworkMessage &msg) {

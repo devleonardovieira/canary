@@ -215,6 +215,7 @@ private:
 	void parseQuestLine(NetworkMessage &msg);
 
 	void parseInviteToParty(NetworkMessage &msg);
+	void parseCreateParty();
 	void parseJoinParty(NetworkMessage &msg);
 	void parseRevokePartyInvite(NetworkMessage &msg);
 	void parsePassPartyLeadership(NetworkMessage &msg);

@@ -8972,13 +8972,30 @@ void Game::playerInviteToParty(uint32_t playerId, uint32_t invitedId) {
 	}
 
 	std::shared_ptr<Party> party = player->getParty();
-	if (!party) {
-		party = Party::create(player);
-	} else if (party->getLeader() != player) {
+	if (!party || party->getLeader() != player) {
 		return;
 	}
 
 	party->invitePlayer(invitedPlayer);
+}
+
+void Game::playerCreateParty(uint32_t playerId) {
+	const auto &player = getPlayerByID(playerId);
+	if (!player) {
+		return;
+	}
+
+	if (player->getParty()) {
+		player->sendTextMessage(MESSAGE_PARTY_MANAGEMENT, "You are already in a party.");
+		return;
+	}
+
+	Party::create(player);
+	player->sendTextMessage(MESSAGE_PARTY_MANAGEMENT, "You have created a party.");
+
+	if (const auto &party = player->getParty()) {
+		party->broadcastPartyDetailedInfo();
+	}
 }
 
 void Game::updatePlayerHelpers(const std::shared_ptr<Player> &player) {
