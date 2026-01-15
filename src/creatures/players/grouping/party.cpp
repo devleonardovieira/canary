@@ -383,6 +383,8 @@ bool Party::invitePlayer(const std::shared_ptr<Player> &player) {
 	ss << leader->getName() << " has invited you to " << leader->getPossessivePronoun() << " party (Share range: " << getMinLevel() << "-" << getMaxLevel() << ").";
 	player->sendTextMessage(MESSAGE_PARTY_MANAGEMENT, ss.str());
 
+	player->sendPartyDetailedInfo(getParty());
+
 	return true;
 }
 
