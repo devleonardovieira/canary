@@ -9040,16 +9040,26 @@ void Game::playerRevokePartyInvitation(uint32_t playerId, uint32_t invitedId) {
 	}
 
 	std::shared_ptr<Party> party = player->getParty();
-	if (!party || party->getLeader() != player) {
-		return;
-	}
+	if (party && party->getLeader() == player) {
+		std::shared_ptr<Player> invitedPlayer = getPlayerByID(invitedId);
+		if (!invitedPlayer || !player->isInviting(invitedPlayer)) {
+			return;
+		}
 
-	std::shared_ptr<Player> invitedPlayer = getPlayerByID(invitedId);
-	if (!invitedPlayer || !player->isInviting(invitedPlayer)) {
-		return;
-	}
+		party->revokeInvitation(invitedPlayer);
+	} else {
+		std::shared_ptr<Player> leader = getPlayerByID(invitedId);
+		if (!leader) {
+			return;
+		}
 
-	party->revokeInvitation(invitedPlayer);
+		party = leader->getParty();
+		if (!party || !party->isPlayerInvited(player)) {
+			return;
+		}
+
+		party->revokeInvitation(player);
+	}
 }
 
 void Game::playerPassPartyLeadership(uint32_t playerId, uint32_t newLeaderId) {

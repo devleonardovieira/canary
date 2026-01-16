@@ -316,15 +316,11 @@ bool Party::removeInvite(const std::shared_ptr<Player> &player, bool removeFromP
 		player->removePartyInvitation(getParty());
 	}
 
-	if (empty()) {
-		disband();
-	} else {
-		for (const auto &member : getMembers()) {
-			g_game().updatePlayerHelpers(member);
-		}
-
-		g_game().updatePlayerHelpers(leader);
+	for (const auto &member : getMembers()) {
+		g_game().updatePlayerHelpers(member);
 	}
+
+	g_game().updatePlayerHelpers(leader);
 
 	return true;
 }
