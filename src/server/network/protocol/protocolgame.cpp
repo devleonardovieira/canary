@@ -8641,6 +8641,21 @@ void ProtocolGame::sendPartyDetailedInfo(const std::shared_ptr<Party> &party) {
 	writeToOutputBuffer(msg);
 }
 
+void ProtocolGame::sendPartyInvitation(const std::shared_ptr<Player> &leader, uint16_t minLevel, uint16_t maxLevel) {
+	if (!leader) {
+		return;
+	}
+
+	NetworkMessage msg;
+	msg.addByte(201); // GameServerPartyInvitation
+	msg.add<uint32_t>(leader->getID());
+	msg.addString(leader->getName());
+	msg.add<uint16_t>(minLevel);
+	msg.add<uint16_t>(maxLevel);
+
+	writeToOutputBuffer(msg);
+}
+
 void ProtocolGame::sendPartyMemberUpdate(const std::shared_ptr<Player> &member, uint32_t flags) {
 	if (!member) {
 		return;

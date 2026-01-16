@@ -335,6 +335,7 @@ private:
 	void sendPartyPlayerMana(const std::shared_ptr<Player> &target, uint8_t manaPercent);
 	void sendPartyCreatureShowStatus(const std::shared_ptr<Creature> &target, bool showStatus);
 	void sendPartyDetailedInfo(const std::shared_ptr<Party> &party);
+	void sendPartyInvitation(const std::shared_ptr<Player> &leader, uint16_t minLevel, uint16_t maxLevel);
 	void sendPartyMemberUpdate(const std::shared_ptr<Player> &member, uint32_t flags);
 	void updatePartyTrackerAnalyzer(const std::shared_ptr<Party> &party);
 	void sendPartyPlayerVocation(const std::shared_ptr<Player> &target);

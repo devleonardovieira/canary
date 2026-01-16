@@ -331,11 +331,9 @@ void Party::revokeInvitation(const std::shared_ptr<Player> &player) {
 		return;
 	}
 
-	std::ostringstream ss;
-	ss << leader->getName() << " has revoked " << leader->getPossessivePronoun() << " invitation.";
-	player->sendTextMessage(MESSAGE_PARTY_MANAGEMENT, ss.str());
+	player->sendPartyInvitation(leader, 0, 0);
 
-	ss.str(std::string());
+	std::ostringstream ss;
 	ss << "Invitation for " << player->getName() << " has been revoked.";
 	leader->sendTextMessage(MESSAGE_PARTY_MANAGEMENT, ss.str());
 
@@ -352,16 +350,10 @@ bool Party::invitePlayer(const std::shared_ptr<Player> &player) {
 		return false;
 	}
 
-	std::ostringstream ss;
-	ss << player->getName() << " has been invited to join the party (Share range: " << getMinLevel() << "-" << getMaxLevel() << ").";
-
 	if (empty()) {
-		ss << " Open the party channel to communicate with your members.";
 		g_game().updatePlayerShield(leader);
 		leader->sendCreatureSkull(leader);
 	}
-
-	leader->sendTextMessage(MESSAGE_PARTY_MANAGEMENT, ss.str());
 
 	inviteList.emplace_back(player);
 
@@ -375,11 +367,11 @@ bool Party::invitePlayer(const std::shared_ptr<Player> &player) {
 
 	player->addPartyInvitation(getParty());
 
-	ss.str(std::string());
-	ss << leader->getName() << " has invited you to " << leader->getPossessivePronoun() << " party (Share range: " << getMinLevel() << "-" << getMaxLevel() << ").";
-	player->sendTextMessage(MESSAGE_PARTY_MANAGEMENT, ss.str());
+	player->sendPartyInvitation(leader, getMinLevel(), getMaxLevel());
 
-	player->sendPartyDetailedInfo(getParty());
+	std::ostringstream ss;
+	ss << player->getName() << " has been invited to join the party.";
+	leader->sendTextMessage(MESSAGE_PARTY_MANAGEMENT, ss.str());
 
 	return true;
 }

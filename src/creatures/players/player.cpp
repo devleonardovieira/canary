@@ -7292,6 +7292,12 @@ void Player::sendPartyDetailedInfo(const std::shared_ptr<Party> &party) const {
 	}
 }
 
+void Player::sendPartyInvitation(const std::shared_ptr<Player> &leader, uint16_t minLevel, uint16_t maxLevel) const {
+	if (client) {
+		client->sendPartyInvitation(leader, minLevel, maxLevel);
+	}
+}
+
 void Player::sendPartyMemberUpdate(const std::shared_ptr<Player> &member, uint32_t flags) const {
 	if (client) {
 		client->sendPartyMemberUpdate(member, flags);

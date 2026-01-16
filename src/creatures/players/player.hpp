@@ -354,6 +354,7 @@ public:
 	bool isPartner(const std::shared_ptr<Player> &player) const;
 	void sendPlayerPartyIcons(const std::shared_ptr<Player> &player) const;
 	void sendPartyDetailedInfo(const std::shared_ptr<Party> &party) const;
+	void sendPartyInvitation(const std::shared_ptr<Player> &leader, uint16_t minLevel, uint16_t maxLevel) const;
 	void sendPartyMemberUpdate(const std::shared_ptr<Player> &member, uint32_t flags) const;
 	bool addPartyInvitation(const std::shared_ptr<Party> &party);
 	void removePartyInvitation(const std::shared_ptr<Party> &party);
