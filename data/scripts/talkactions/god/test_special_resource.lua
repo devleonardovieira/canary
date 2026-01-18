@@ -19,7 +19,6 @@ function talk.onSay(player, words, param)
 		end
 		player:addSpecialResource(value)
 		player:sendTextMessage(MESSAGE_STATUS, string.format("Adicionado %d ao Special Resource. Novo valor: %d", value, player:getSpecialResourceValue()))
-
 	elseif action == "remove" then
 		if value <= 0 then
 			player:sendTextMessage(MESSAGE_STATUS, "Uso: /testsr remove [quantidade]")
@@ -27,14 +26,12 @@ function talk.onSay(player, words, param)
 		end
 		player:removeSpecialResource(value)
 		player:sendTextMessage(MESSAGE_STATUS, string.format("Removido %d do Special Resource. Novo valor: %d", value, player:getSpecialResourceValue()))
-
 	elseif action == "set" then
 		-- Simula um 'set' removendo tudo e adicionando o valor desejado
 		local current = player:getSpecialResourceValue()
 		player:removeSpecialResource(current)
 		player:addSpecialResource(value)
 		player:sendTextMessage(MESSAGE_STATUS, string.format("Special Resource definido para %d.", player:getSpecialResourceValue()))
-
 	elseif action == "reset" then
 		-- Reseta para o máximo e remove pausas
 		local max = player:getSpecialResourceMax()
@@ -43,12 +40,10 @@ function talk.onSay(player, words, param)
 		player:addSpecialResource(max) -- Enche
 		player:setSpecialResourcePaused(false) -- Remove pausas
 		player:sendTextMessage(MESSAGE_STATUS, "Special Resource resetado para o máximo e despausado.")
-
 	elseif action == "resume" or action == "auto" then
 		-- Deixa "seguir sozinho" (remove pausas)
 		player:setSpecialResourcePaused(false)
 		player:sendTextMessage(MESSAGE_STATUS, "Special Resource despausado (modo automático).")
-
 	elseif action == "mode" then
 		local modeStr = split[2]
 		if modeStr == "regen" then
@@ -62,20 +57,16 @@ function talk.onSay(player, words, param)
 			return false
 		end
 		player:sendTextMessage(MESSAGE_STATUS, "Modo alterado para " .. modeStr)
-
 	elseif action == "pause" then
 		-- Pausa total
 		player:setSpecialResourcePaused(true)
 		player:sendTextMessage(MESSAGE_STATUS, "Special Resource pausado.")
-
 	elseif action == "setregen" then
 		player:setSpecialResourceRegen(value)
 		player:sendTextMessage(MESSAGE_STATUS, "Regen rate defined to " .. value)
-
 	elseif action == "setdrain" then
 		player:setSpecialResourceDrain(value)
 		player:sendTextMessage(MESSAGE_STATUS, "Drain rate defined to " .. value)
-
 	else
 		-- Info / Ajuda
 		local name = player:getSpecialResourceName()
@@ -87,10 +78,14 @@ function talk.onSay(player, words, param)
 		local drain = player:getSpecialResourceDrain()
 
 		local stateStr = "UNKNOWN"
-		if state == 0 then stateStr = "NONE"
-		elseif state == 1 then stateStr = "MEDIUM"
-		elseif state == 2 then stateStr = "HIGH"
-		elseif state == 3 then stateStr = "CRITICAL"
+		if state == 0 then
+			stateStr = "NONE"
+		elseif state == 1 then
+			stateStr = "MEDIUM"
+		elseif state == 2 then
+			stateStr = "HIGH"
+		elseif state == 3 then
+			stateStr = "CRITICAL"
 		end
 
 		player:sendTextMessage(MESSAGE_STATUS, "--- Special Resource Info ---")
