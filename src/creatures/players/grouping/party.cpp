@@ -331,11 +331,9 @@ void Party::revokeInvitation(const std::shared_ptr<Player> &player) {
 		return;
 	}
 
-	player->sendPartyInvitation(leader, 0, 0);
+	player->sendPartyInvitationRevoked(leader);
 
-	std::ostringstream ss;
-	ss << "Invitation for " << player->getName() << " has been revoked.";
-	leader->sendTextMessage(MESSAGE_PARTY_MANAGEMENT, ss.str());
+	leader->sendPartyTargetRemoved(player);
 
 	removeInvite(player);
 }
@@ -368,6 +366,7 @@ bool Party::invitePlayer(const std::shared_ptr<Player> &player) {
 	player->addPartyInvitation(getParty());
 
 	player->sendPartyInvitation(leader, getMinLevel(), getMaxLevel());
+	leader->sendPartyTargetAdded(player);
 
 	std::ostringstream ss;
 	ss << player->getName() << " has been invited to join the party.";

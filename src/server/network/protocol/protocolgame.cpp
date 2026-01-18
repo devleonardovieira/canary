@@ -1306,6 +1306,9 @@ void ProtocolGame::parsePacketFromDispatcher(NetworkMessage &msg, uint8_t recvby
 		case 0xA9:
 			parseCreateParty();
 			break;
+		case 0xB2:
+			parseInviteToPartyByName(msg);
+			break;
 		case 0xAA:
 			g_game().playerCreatePrivateChannel(player->getID());
 			break;
@@ -3287,6 +3290,14 @@ void ProtocolGame::parseInviteToParty(NetworkMessage &msg) {
 	g_game().playerInviteToParty(player->getID(), targetId);
 }
 
+void ProtocolGame::parseInviteToPartyByName(NetworkMessage &msg) {
+	auto name = msg.getString();
+	const auto target = g_game().getPlayerByName(name);
+	if (!target) {
+		return;
+	}
+	g_game().playerInviteToParty(player->getID(), target->getID());
+}
 void ProtocolGame::parseCreateParty() {
 	g_game().playerCreateParty(player->getID());
 }
@@ -8648,10 +8659,53 @@ void ProtocolGame::sendPartyInvitation(const std::shared_ptr<Player> &leader, ui
 
 	NetworkMessage msg;
 	msg.addByte(201); // GameServerPartyInvitation
+	msg.addByte(1); // ACTION_INVITE
 	msg.add<uint32_t>(leader->getID());
 	msg.addString(leader->getName());
 	msg.add<uint16_t>(minLevel);
 	msg.add<uint16_t>(maxLevel);
+
+	writeToOutputBuffer(msg);
+}
+
+void ProtocolGame::sendPartyInvitationRevoked(const std::shared_ptr<Player> &leader) {
+	if (!leader) {
+		return;
+	}
+
+	NetworkMessage msg;
+	msg.addByte(201); // GameServerPartyInvitation
+	msg.addByte(2); // ACTION_INVITE_REVOKED
+	msg.add<uint32_t>(leader->getID());
+	msg.addString(leader->getName());
+
+	writeToOutputBuffer(msg);
+}
+
+void ProtocolGame::sendPartyTargetRemoved(const std::shared_ptr<Player> &target) {
+	if (!target) {
+		return;
+	}
+
+	NetworkMessage msg;
+	msg.addByte(201); // GameServerPartyInvitation
+	msg.addByte(3); // ACTION_TARGET_REMOVED
+	msg.add<uint32_t>(target->getID());
+	msg.addString(target->getName());
+
+	writeToOutputBuffer(msg);
+}
+
+void ProtocolGame::sendPartyTargetAdded(const std::shared_ptr<Player> &target) {
+	if (!target) {
+		return;
+	}
+
+	NetworkMessage msg;
+	msg.addByte(201); // GameServerPartyInvitation
+	msg.addByte(4); // ACTION_TARGET_ADDED
+	msg.add<uint32_t>(target->getID());
+	msg.addString(target->getName());
 
 	writeToOutputBuffer(msg);
 }

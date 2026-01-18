@@ -1107,6 +1107,9 @@ public:
 	void sendLeaderTeamFinder(bool reset) const;
 	void sendTeamFinderList() const;
 	void sendCreatureHelpers(uint32_t creatureId, uint16_t helpers) const;
+	void sendPartyInvitationRevoked(const std::shared_ptr<Player> &leader) const;
+	void sendPartyTargetRemoved(const std::shared_ptr<Player> &target) const;
+	void sendPartyTargetAdded(const std::shared_ptr<Player> &target) const;
 
 	void setItemCustomPrice(uint16_t itemId, uint64_t price);
 	uint32_t getCharmPoints() const;

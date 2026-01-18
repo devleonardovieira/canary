@@ -37,7 +37,7 @@ function gameSpellsHandler.onExtendedOpcode(player, opcode, buffer)
 		if spellName and posData then
 			if not GameSpells.isValidSpell(spellName) then
 				player:sendCancelMessage("Spell not configured in GameSpells.Config.")
-				return true -- Invalid spell attempt
+				return true
 			end
 			local position = Position(posData.x, posData.y, posData.z)
 

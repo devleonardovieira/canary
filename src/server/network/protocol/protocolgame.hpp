@@ -215,6 +215,7 @@ private:
 	void parseQuestLine(NetworkMessage &msg);
 
 	void parseInviteToParty(NetworkMessage &msg);
+	void parseInviteToPartyByName(NetworkMessage &msg);
 	void parseCreateParty();
 	void parseJoinParty(NetworkMessage &msg);
 	void parseRevokePartyInvite(NetworkMessage &msg);
@@ -336,6 +337,9 @@ private:
 	void sendPartyCreatureShowStatus(const std::shared_ptr<Creature> &target, bool showStatus);
 	void sendPartyDetailedInfo(const std::shared_ptr<Party> &party);
 	void sendPartyInvitation(const std::shared_ptr<Player> &leader, uint16_t minLevel, uint16_t maxLevel);
+	void sendPartyInvitationRevoked(const std::shared_ptr<Player> &leader);
+	void sendPartyTargetRemoved(const std::shared_ptr<Player> &target);
+	void sendPartyTargetAdded(const std::shared_ptr<Player> &target);
 	void sendPartyMemberUpdate(const std::shared_ptr<Player> &member, uint32_t flags);
 	void updatePartyTrackerAnalyzer(const std::shared_ptr<Party> &party);
 	void sendPartyPlayerVocation(const std::shared_ptr<Player> &target);

@@ -7298,6 +7298,24 @@ void Player::sendPartyInvitation(const std::shared_ptr<Player> &leader, uint16_t
 	}
 }
 
+void Player::sendPartyInvitationRevoked(const std::shared_ptr<Player> &leader) const {
+	if (client) {
+		client->sendPartyInvitationRevoked(leader);
+	}
+}
+
+void Player::sendPartyTargetRemoved(const std::shared_ptr<Player> &target) const {
+	if (client) {
+		client->sendPartyTargetRemoved(target);
+	}
+}
+
+void Player::sendPartyTargetAdded(const std::shared_ptr<Player> &target) const {
+	if (client) {
+		client->sendPartyTargetAdded(target);
+	}
+}
+
 void Player::sendPartyMemberUpdate(const std::shared_ptr<Player> &member, uint32_t flags) const {
 	if (client) {
 		client->sendPartyMemberUpdate(member, flags);
