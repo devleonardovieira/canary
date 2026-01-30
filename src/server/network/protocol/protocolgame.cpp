@@ -2920,6 +2920,17 @@ void ProtocolGame::parseLeaderFinderWindow(NetworkMessage &msg) {
 			break;
 		}
 		case 1: {
+			const auto &teamAssemble = g_game().getTeamFinder(player);
+			if (teamAssemble && teamAssemble->partyBool) {
+				if (const auto &party = player->getParty()) {
+					for (const auto &memberPair : teamAssemble->membersMap) {
+						const auto &member = g_game().getPlayerByGUID(memberPair.first);
+						if (member && party->isPlayerInvited(member)) {
+							party->revokeInvitation(member);
+						}
+					}
+				}
+			}
 			player->sendLeaderTeamFinder(true);
 			break;
 		}
@@ -2988,7 +2999,7 @@ void ProtocolGame::parseMemberFinderWindow(NetworkMessage &msg) {
 			return;
 		}
 
-		const auto &teamAssemble = g_game().getTeamFinder(player);
+		const auto &teamAssemble = g_game().getTeamFinder(leader);
 		if (!teamAssemble) {
 			return;
 		}
@@ -2996,6 +3007,11 @@ void ProtocolGame::parseMemberFinderWindow(NetworkMessage &msg) {
 		if (action == 1) {
 			leader->sendTextMessage(MESSAGE_STATUS, "There is a new request to join your team.");
 			teamAssemble->membersMap.insert({ player->getGUID(), 1 });
+			if (teamAssemble->partyBool) {
+				if (const auto &party = leader->getParty()) {
+					party->invitePlayer(player);
+				}
+			}
 		} else {
 			for (auto itt = teamAssemble->membersMap.begin(), end = teamAssemble->membersMap.end(); itt != end; ++itt) {
 				if (itt->first == player->getGUID()) {
