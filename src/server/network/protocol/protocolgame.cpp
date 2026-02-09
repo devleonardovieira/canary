@@ -2960,10 +2960,28 @@ void ProtocolGame::parseLeaderFinderWindow(NetworkMessage &msg) {
 				}
 				case 3: {
 					member->sendTextMessage(MESSAGE_STATUS, "Your team finder request was accepted.");
+					if (teamAssemble->partyBool) {
+						if (const auto &party = player->getParty()) {
+							if (!member->getParty()) {
+								if (!party->isPlayerInvited(member)) {
+									party->invitePlayer(member);
+								}
+								party->joinParty(member);
+							} else {
+								member->sendTextMessage(MESSAGE_PARTY_MANAGEMENT, "You are already in a party.");
+							}
+						}
+					}
 					break;
 				}
 				case 4: {
 					member->sendTextMessage(MESSAGE_STATUS, "Your team finder request was denied.");
+					for (auto itt = teamAssemble->membersMap.begin(), end = teamAssemble->membersMap.end(); itt != end; ++itt) {
+						if (itt->first == memberID) {
+							teamAssemble->membersMap.erase(itt);
+							break;
+						}
+					}
 					break;
 				}
 
@@ -3007,18 +3025,22 @@ void ProtocolGame::parseMemberFinderWindow(NetworkMessage &msg) {
 		if (action == 1) {
 			leader->sendTextMessage(MESSAGE_STATUS, "There is a new request to join your team.");
 			teamAssemble->membersMap.insert({ player->getGUID(), 1 });
+			leader->sendLeaderTeamFinder(false);
+		} else {
 			if (teamAssemble->partyBool) {
 				if (const auto &party = leader->getParty()) {
-					party->invitePlayer(player);
+					if (party->isPlayerInvited(player)) {
+						party->revokeInvitation(player);
+					}
 				}
 			}
-		} else {
 			for (auto itt = teamAssemble->membersMap.begin(), end = teamAssemble->membersMap.end(); itt != end; ++itt) {
 				if (itt->first == player->getGUID()) {
 					teamAssemble->membersMap.erase(itt);
 					break;
 				}
 			}
+			leader->sendLeaderTeamFinder(false);
 		}
 		player->sendTeamFinderList();
 	}
